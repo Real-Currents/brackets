@@ -1,6 +1,7 @@
-JavaScriptCodeHints.bak
-brackets-sprint-35-WIN.msi
-theseus-0.3.1.zip
+*.bak
+*.msi
+*.zip
+
 Thumbs.db
 
 # ignore jenkins build info

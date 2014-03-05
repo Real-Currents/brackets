@@ -310,8 +310,8 @@ define(function (require, exports, module) {
     }
 
     /** @const - hard-coded for now, but may want to make these preferences */
-    var _staticHtmlFileExts = ["htm", "html"],
-        _serverHtmlFileExts = ["php", "php3", "php4", "php5", "phtm", "phtml", "cfm", "cfml", "asp", "aspx", "jsp", "jspx", "shtm", "shtml"];
+    var _staticHtmlFileExts = ["htm", "html", "svg"],
+        _serverHtmlFileExts = ["cgi", "php", "php3", "php4", "php5", "phtm", "phtml", "cfm", "cfml", "asp", "aspx", "jsp", "jspx", "shtm", "shtml"];
 
     /**
      * Determine if file extension is a static html file extension.
