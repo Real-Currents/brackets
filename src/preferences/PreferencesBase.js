@@ -115,9 +115,9 @@ define(function (require, exports, module) {
         /**
          * MemoryStorage is not stored in a file, so fileChanged is ignored.
          * 
-         * @param {string} filename File that has changed
+         * @param {string} filePath File that has changed
          */
-        fileChanged: function (filename) {
+        fileChanged: function (filePath) {
         }
     };
     
@@ -175,10 +175,15 @@ define(function (require, exports, module) {
                     
                     self._lineEndings = FileUtils.sniffLineEndings(text);
                     
-                    try {
-                        result.resolve(JSON.parse(text));
-                    } catch (e) {
-                        result.reject(new ParsingError("Invalid JSON settings at " + path + "(" + e.toString() + ")"));
+                    // If the file is empty, turn it into an empty object
+                    if (/^\s*$/.test(text)) {
+                        result.resolve({});
+                    } else {
+                        try {
+                            result.resolve(JSON.parse(text));
+                        } catch (e) {
+                            result.reject(new ParsingError("Invalid JSON settings at " + path + "(" + e.toString() + ")"));
+                        }
                     }
                 });
             } else {
@@ -236,10 +241,10 @@ define(function (require, exports, module) {
         /**
          * If the filename matches this Storage's path, a changed message is triggered.
          * 
-         * @param {string} filename File that has changed
+         * @param {string} filePath File that has changed
          */
-        fileChanged: function (filename) {
-            if (filename === this.path) {
+        fileChanged: function (filePath) {
+            if (filePath === this.path) {
                 $(this).trigger("changed");
             }
         }
@@ -344,16 +349,19 @@ define(function (require, exports, module) {
          * 
          * @param {string} id key to set or delete
          * @param {*} value value for this key (undefined to delete)
-         * @return {boolean} always returns true
+         * @return {boolean} true if the value was set.
          */
         _performSet: function (id, value) {
-            this._dirty = true;
-            if (value === undefined) {
-                delete this.data[id];
-            } else {
-                this.data[id] = value;
+            if (!_.isEqual(this.data[id], value)) {
+                this._dirty = true;
+                if (value === undefined) {
+                    delete this.data[id];
+                } else {
+                    this.data[id] = _.cloneDeep(value);
+                }
+                return true;
             }
-            return true;
+            return false;
         },
         
         /**
@@ -477,10 +485,10 @@ define(function (require, exports, module) {
          * Tells the Scope that the given file has been changed so that the
          * Storage can be reloaded if needed.
          * 
-         * @param {string} filename Name of the file that has changed
+         * @param {string} filePath File that has changed
          */
-        fileChanged: function (filename) {
-            this.storage.fileChanged(filename);
+        fileChanged: function (filePath) {
+            this.storage.fileChanged(filePath);
         },
         
         /**
@@ -616,12 +624,15 @@ define(function (require, exports, module) {
             if (!section) {
                 data[layerID] = section = {};
             }
-            if (value === undefined) {
-                delete section[id];
-            } else {
-                section[id] = value;
+            if (!_.isEqual(section[id], value)) {
+                if (value === undefined) {
+                    delete section[id];
+                } else {
+                    section[id] = _.cloneDeep(value);
+                }
+                return true;
             }
-            return true;
+            return false;
         },
 
         /**
@@ -741,12 +752,15 @@ define(function (require, exports, module) {
             if (!section) {
                 data[layerID] = section = {};
             }
-            if (value === undefined) {
-                delete section[id];
-            } else {
-                section[id] = value;
+            if (!_.isEqual(section[id], value)) {
+                if (value === undefined) {
+                    delete section[id];
+                } else {
+                    section[id] = _.cloneDeep(value);
+                }
+                return true;
             }
-            return true;
+            return false;
         },
         
         /**
@@ -1093,7 +1107,8 @@ define(function (require, exports, module) {
                 type: type,
                 initial: initial,
                 name: options.name,
-                description: options.description
+                description: options.description,
+                validator: options.validator
             });
             this.set(id, initial, {
                 location: {
@@ -1422,7 +1437,11 @@ define(function (require, exports, module) {
                 if (scope) {
                     var result = scope.get(id, context);
                     if (result !== undefined) {
-                        return result;
+                        var pref      = this.getPreference(id),
+                            validator = pref && pref.validator;
+                        if (!validator || validator(result)) {
+                            return _.cloneDeep(result);
+                        }
                     }
                 }
             }
@@ -1466,7 +1485,8 @@ define(function (require, exports, module) {
          * @param {string} id Identifier of the preference to set
          * @param {Object} value New value for the preference
          * @param {{location: ?Object, context: ?Object}=} options Specific location in which to set the value or the context to use when setting the value
-         * @return {boolean} true if a value was set
+         * @return {valid:  {boolean}, true if no validator specified or if value is valid
+         *          stored: {boolean}} true if a value was stored
          */
         set: function (id, value, options) {
             options = options || {};
@@ -1488,12 +1508,19 @@ define(function (require, exports, module) {
                         scope: scopeOrder[scopeOrder.length - 2]
                     };
                 } else {
-                    return false;
+                    return { valid: true, stored: false };
                 }
             }
+            
             var scope = this._scopes[location.scope];
             if (!scope) {
-                return false;
+                return { valid: true, stored: false };
+            }
+            
+            var pref      = this.getPreference(id),
+                validator = pref && pref.validator;
+            if (validator && !validator(value)) {
+                return { valid: false, stored: false };
             }
             
             var wasSet = scope.set(id, value, context, location);
@@ -1502,7 +1529,7 @@ define(function (require, exports, module) {
                     ids: [id]
                 });
             }
-            return wasSet;
+            return { valid: true, stored: wasSet };
         },
         
         /**
@@ -1679,11 +1706,11 @@ define(function (require, exports, module) {
          * Tells the PreferencesSystem that the given file has been changed so that any
          * related Scopes can be reloaded.
          * 
-         * @param {string} filename Name of the file that has changed
+         * @param {string} filePath File that has changed
          */
-        fileChanged: function (filename) {
+        fileChanged: function (filePath) {
             _.forEach(this._scopes, function (scope) {
-                scope.fileChanged(filename);
+                scope.fileChanged(filePath);
             });
         },
         
