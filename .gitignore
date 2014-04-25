@@ -1,6 +1,7 @@
 *.bak
 *.msi
 *.zip
+src/extensions/default/JavaScriptCodeHints/main.js
 
 Thumbs.db
 
