@@ -2,7 +2,8 @@
 *.msi
 *.zip
 src/extensions/default/JavaScriptCodeHints/main.js
-
+src/extensions/default/JavaScriptCodeHints/thirdparty/
+exts
 Thumbs.db
 
 # ignore jenkins build info

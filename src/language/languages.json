@@ -155,7 +155,7 @@
     "perl": {
         "name": "Perl",
         "mode": "perl",
-        "fileExtensions": ["pl", "pm", "cgi"],
+        "fileExtensions": ["cgi", "pl", "pm", "t", "ep"],
         "lineComment": ["#"]
     },
 
