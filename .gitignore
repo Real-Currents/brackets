@@ -1,8 +1,8 @@
 *.bak
 *.msi
 *.zip
-src/extensions/default/JavaScriptCodeHints/main.js
-src/extensions/default/JavaScriptCodeHints/thirdparty/
+src/extensions/default/JavaScriptCodeHints
+src/filesystem/impls/appshell/node/node_modules
 exts
 Thumbs.db
 
