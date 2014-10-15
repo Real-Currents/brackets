@@ -22,7 +22,7 @@
  */
 
 /*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, describe, it, expect, beforeEach, beforeFirst, afterEach, afterLast, waitsFor, waits, runs, brackets, waitsForDone, spyOn, xit, jasmine */
+/*global define, describe, it, expect, beforeEach, beforeFirst, afterEach, afterLast, waits, runs, waitsForDone, spyOn */
 
 define(function (require, exports, module) {
     "use strict";
@@ -30,7 +30,7 @@ define(function (require, exports, module) {
     var SpecRunnerUtils  = require("spec/SpecRunnerUtils"),
         FileSystem       = require("filesystem/FileSystem"),
         StringUtils      = require("utils/StringUtils"),
-        Strings;
+        Strings          = require("strings");
 
     describe("Code Inspection", function () {
         this.category = "integration";
@@ -42,6 +42,7 @@ define(function (require, exports, module) {
             CodeInspection,
             CommandManager,
             Commands  = require("command/Commands"),
+            DocumentManager,
             EditorManager,
             prefs;
 
@@ -109,8 +110,8 @@ define(function (require, exports, module) {
                     // Load module instances from brackets.test
                     $ = testWindow.$;
                     brackets = testWindow.brackets;
-                    Strings = testWindow.require("strings");
                     CommandManager = brackets.test.CommandManager;
+                    DocumentManager = brackets.test.DocumentManager;
                     EditorManager = brackets.test.EditorManager;
                     prefs = brackets.test.PreferencesManager.getExtensionPrefs("linting");
                     CodeInspection = brackets.test.CodeInspection;
@@ -137,6 +138,7 @@ define(function (require, exports, module) {
             $             = null;
             brackets      = null;
             CommandManager = null;
+            DocumentManager = null;
             EditorManager = null;
             SpecRunnerUtils.closeTestWindow();
         });
@@ -413,7 +415,35 @@ define(function (require, exports, module) {
         describe("Code Inspection UI", function () {
             beforeEach(function () {
                 CodeInspection._unregisterAll();
+                CodeInspection.toggleEnabled(true);
             });
+
+            // Utility to create an async provider where the testcase can control when each async result resolves
+            function makeAsyncLinter() {
+                return {
+                    name: "Test Async Linter",
+                    scanFileAsync: function (text, fullPath) {
+                        if (!this.futures[fullPath]) {
+                            this.futures[fullPath] = [];
+                            this.filesCalledOn.push(fullPath);
+                        }
+                        
+                        var result = new $.Deferred();
+                        this.futures[fullPath].push(result);
+                        return result.promise();
+                    },
+                    futures: {},      // map from full path to array of Deferreds (in call order)
+                    filesCalledOn: [] // in order of first call for each path
+                };
+            }
+            
+            // Tooltip is panel title, plus an informational message when there are problems.
+            function buildTooltip(title, count) {
+                if (count === 0) {
+                    return title;
+                }
+                return StringUtils.format(Strings.STATUSBAR_CODE_INSPECTION_TOOLTIP, title);
+            }
 
             it("should run test linter when a JavaScript document opens and indicate errors in the panel", function () {
                 var codeInspector = createCodeInspector("javascript linter", failLintResult());
@@ -427,45 +457,124 @@ define(function (require, exports, module) {
                     expect($statusBar.is(":visible")).toBe(true);
                 });
             });
-
-            it("should show only warnings for the current file", function () {
+            
+            it("should ignore async results from previous file", function () {
                 CodeInspection.toggleEnabled(false);
  
-                var firstTime = true,
-                    deferred1 = new $.Deferred(),
-                    deferred2 = new $.Deferred();
- 
-                var asyncProvider = {
-                    name: "Test Async Linter",
-                    scanFileAsync: function () {
-                        if (firstTime) {
-                            firstTime = false;
-                            return deferred1.promise();
-                        } else {
-                            return deferred2.promise();
-                        }
-                    }
-                };
-
+                var asyncProvider = makeAsyncLinter();
                 CodeInspection.register("javascript", asyncProvider);
 
-                waitsForDone(SpecRunnerUtils.openProjectFiles(["no-errors.js", "errors.js"], "open test files"));
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["no-errors.js", "errors.js"]), "open test files");
+                
+                var errorsJS   = SpecRunnerUtils.makeAbsolute("errors.js"),
+                    noErrorsJS = SpecRunnerUtils.makeAbsolute("no-errors.js");
 
                 runs(function () {
+                    // Start linting the first file
                     CodeInspection.toggleEnabled(true);
-                    CommandManager.execute(Commands.FILE_CLOSE);
+                    expect(asyncProvider.filesCalledOn).toEqual([errorsJS]);
+                    
+                    // Close that file, switching to the 2nd one
+                    waitsForDone(CommandManager.execute(Commands.FILE_CLOSE));
                 });
                 
-                // Close the file which was started to lint
                 runs(function () {
-                    // let the linter finish
-                    deferred1.resolve(failLintResult());
+                    // Verify that we started linting the 2nd file
+                    expect(DocumentManager.getCurrentDocument().file.fullPath).toBe(noErrorsJS);
+                    expect(asyncProvider.filesCalledOn).toEqual([errorsJS, noErrorsJS]);
+                    
+                    // Finish old (stale) linting session - verify results not shown
+                    asyncProvider.futures[errorsJS][0].resolve(failLintResult());
                     expect($("#problems-panel").is(":visible")).toBe(false);
-                    deferred2.resolve(successfulLintResult());
+                    
+                    // Finish new (current) linting session
+                    asyncProvider.futures[noErrorsJS][0].resolve(successfulLintResult());
                     expect($("#problems-panel").is(":visible")).toBe(false);
                 });
             });
+            
+            it("should ignore async results from previous run in same file - finishing in order", function () {
+                CodeInspection.toggleEnabled(false);
+ 
+                var asyncProvider = makeAsyncLinter();
+                CodeInspection.register("javascript", asyncProvider);
 
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["no-errors.js"]), "open test files");
+                
+                var noErrorsJS = SpecRunnerUtils.makeAbsolute("no-errors.js");
+
+                runs(function () {
+                    // Start linting the file
+                    CodeInspection.toggleEnabled(true);
+                    expect(asyncProvider.filesCalledOn).toEqual([noErrorsJS]);
+                    
+                    // "Modify" the file
+                    $(DocumentManager).triggerHandler("documentSaved", DocumentManager.getCurrentDocument());
+                    expect(asyncProvider.futures[noErrorsJS].length).toBe(2);
+                    
+                    // Finish old (stale) linting session - verify results not shown
+                    asyncProvider.futures[noErrorsJS][0].resolve(failLintResult());
+                    expect($("#problems-panel").is(":visible")).toBe(false);
+                    
+                    // Finish new (current) linting session - verify results are shown
+                    asyncProvider.futures[noErrorsJS][1].resolve(failLintResult());
+                    expect($("#problems-panel").is(":visible")).toBe(true);
+                });
+            });
+            
+            it("should ignore async results from previous run in same file - finishing reverse order", function () {
+                CodeInspection.toggleEnabled(false);
+ 
+                var asyncProvider = makeAsyncLinter();
+                CodeInspection.register("javascript", asyncProvider);
+
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["no-errors.js"]), "open test files");
+                
+                var noErrorsJS = SpecRunnerUtils.makeAbsolute("no-errors.js");
+
+                runs(function () {
+                    // Start linting the file
+                    CodeInspection.toggleEnabled(true);
+                    expect(asyncProvider.filesCalledOn).toEqual([noErrorsJS]);
+                    
+                    // "Modify" the file
+                    $(DocumentManager).triggerHandler("documentSaved", DocumentManager.getCurrentDocument());
+                    expect(asyncProvider.futures[noErrorsJS].length).toBe(2);
+                    
+                    // Finish new (current) linting session - verify results are shown
+                    asyncProvider.futures[noErrorsJS][1].resolve(failLintResult());
+                    expect($("#problems-panel").is(":visible")).toBe(true);
+                    
+                    // Finish old (stale) linting session - verify results don't replace current results
+                    asyncProvider.futures[noErrorsJS][0].resolve(successfulLintResult());
+                    expect($("#problems-panel").is(":visible")).toBe(true);
+                });
+            });
+            
+            it("should ignore async results after linting disabled", function () {
+                CodeInspection.toggleEnabled(false);
+ 
+                var asyncProvider = makeAsyncLinter();
+                CodeInspection.register("javascript", asyncProvider);
+
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["no-errors.js"]), "open test files");
+                
+                var noErrorsJS = SpecRunnerUtils.makeAbsolute("no-errors.js");
+
+                runs(function () {
+                    // Start linting the file
+                    CodeInspection.toggleEnabled(true);
+                    expect(asyncProvider.filesCalledOn).toEqual([noErrorsJS]);
+                    
+                    // Disable linting
+                    CodeInspection.toggleEnabled(false);
+                    
+                    // Finish old (stale) linting session - verify results not shown
+                    asyncProvider.futures[noErrorsJS][0].resolve(failLintResult());
+                    expect($("#problems-panel").is(":visible")).toBe(false);
+                });
+            });
+            
             it("should show problems panel after too many errors", function () {
                 var lintResult = {
                     errors: [
@@ -517,8 +626,8 @@ define(function (require, exports, module) {
                 });
             });
 
-            it("should not show the problems panel when there is no linting error", function () {
-                var codeInspector = createCodeInspector("javascript linter", successfulLintResult());
+            it("should not show the problems panel when there is no linting error - empty errors array", function () {
+                var codeInspector = createCodeInspector("javascript linter", {errors: []});
                 CodeInspection.register("javascript", codeInspector);
 
                 waitsForDone(SpecRunnerUtils.openProjectFiles(["errors.js"]), "open test file", 5000);
@@ -530,19 +639,20 @@ define(function (require, exports, module) {
                 });
             });
 
-            it("status icon should toggle Errors panel when errors present", function () {
-                var codeInspector = createCodeInspector("javascript linter", failLintResult());
+            it("should not show the problems panel when there is no linting error - null result", function () {
+                var codeInspector = createCodeInspector("javascript linter", null);
                 CodeInspection.register("javascript", codeInspector);
 
-                waitsForDone(SpecRunnerUtils.openProjectFiles(["errors.js"]), "open test file");
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["errors.js"]), "open test file", 5000);
 
                 runs(function () {
-                    toggleJSLintResults(false);
-                    toggleJSLintResults(true);
+                    expect($("#problems-panel").is(":visible")).toBe(false);
+                    var $statusBar = $("#status-inspection");
+                    expect($statusBar.is(":visible")).toBe(true);
                 });
             });
 
-            it("should run two linters and display two expanded collapsible sections in the errors panel", function () {
+            it("should display two expanded, collapsible sections in the errors panel when two linters have errors", function () {
                 var codeInspector1 = createCodeInspector("javascript linter 1", failLintResult());
                 var codeInspector2 = createCodeInspector("javascript linter 2", failLintResult());
                 CodeInspection.register("javascript", codeInspector1);
@@ -561,14 +671,53 @@ define(function (require, exports, module) {
                 });
             });
 
-            it("should run the linter and display no collapsible header section in the errors panel", function () {
-                var codeInspector1 = createCodeInspector("javascript linter 1", failLintResult());
+            it("should display no header section when only one linter has errors", function () {
+                var codeInspector1 = createCodeInspector("javascript linter 1", failLintResult()),
+                    codeInspector2 = createCodeInspector("javascript linter 2", {errors: []}),  // 1st way of reporting 0 errors
+                    codeInspector3 = createCodeInspector("javascript linter 3", null);          // 2nd way of reporting 0 errors
                 CodeInspection.register("javascript", codeInspector1);
+                CodeInspection.register("javascript", codeInspector2);
+                CodeInspection.register("javascript", codeInspector3);
 
                 waitsForDone(SpecRunnerUtils.openProjectFiles(["errors.js"]), "open test file", 5000);
 
                 runs(function () {
+                    expect($("#problems-panel").is(":visible")).toBe(true);
                     expect($(".inspector-section").is(":visible")).toBeFalsy();
+                });
+            });
+
+            it("should only display header sections for linters with errors", function () {
+                var codeInspector1 = createCodeInspector("javascript linter 1", failLintResult()),
+                    codeInspector2 = createCodeInspector("javascript linter 2", {errors: []}),  // 1st way of reporting 0 errors
+                    codeInspector3 = createCodeInspector("javascript linter 3", null),          // 2nd way of reporting 0 errors
+                    codeInspector4 = createCodeInspector("javascript linter 4", failLintResult());
+                CodeInspection.register("javascript", codeInspector1);
+                CodeInspection.register("javascript", codeInspector2);
+                CodeInspection.register("javascript", codeInspector3);
+                CodeInspection.register("javascript", codeInspector4);
+
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["errors.js"]), "open test file", 5000);
+
+                runs(function () {
+                    expect($("#problems-panel").is(":visible")).toBe(true);
+                    
+                    var $inspectorSections = $(".inspector-section td");
+                    expect($inspectorSections.length).toEqual(2);
+                    expect($inspectorSections[0].innerHTML.indexOf("javascript linter 1 (1)")).not.toBe(-1);
+                    expect($inspectorSections[1].innerHTML.indexOf("javascript linter 4 (1)")).not.toBe(-1);
+                });
+            });
+
+            it("status icon should toggle Errors panel when errors present", function () {
+                var codeInspector = createCodeInspector("javascript linter", failLintResult());
+                CodeInspection.register("javascript", codeInspector);
+
+                waitsForDone(SpecRunnerUtils.openProjectFiles(["errors.js"]), "open test file");
+
+                runs(function () {
+                    toggleJSLintResults(false);
+                    toggleJSLintResults(true);
                 });
             });
 
@@ -598,7 +747,8 @@ define(function (require, exports, module) {
                     expect($statusBar.is(":visible")).toBe(true);
 
                     var tooltip = $statusBar.attr("title");
-                    expect(tooltip).toBe(StringUtils.format(Strings.SINGLE_ERROR, "JavaScript Linter"));
+                    var expectedTooltip = buildTooltip(StringUtils.format(Strings.SINGLE_ERROR, "JavaScript Linter"), 1);
+                    expect(tooltip).toBe(expectedTooltip);
                 });
             });
 
@@ -631,7 +781,8 @@ define(function (require, exports, module) {
                     expect($statusBar.is(":visible")).toBe(true);
 
                     var tooltip = $statusBar.attr("title");
-                    expect(tooltip).toBe(StringUtils.format(Strings.MULTIPLE_ERRORS, "JavaScript Linter", 2));
+                    var expectedTooltip = buildTooltip(StringUtils.format(Strings.MULTIPLE_ERRORS, "JavaScript Linter", 2), 2);
+                    expect(tooltip).toBe(expectedTooltip);
                 });
             });
 
@@ -654,7 +805,8 @@ define(function (require, exports, module) {
 
                     var tooltip = $statusBar.attr("title");
                     // tooltip will contain + in the title if the inspection was aborted
-                    expect(tooltip).toBe(StringUtils.format(Strings.ERRORS_PANEL_TITLE_MULTIPLE, 2));
+                    var expectedTooltip = buildTooltip(StringUtils.format(Strings.ERRORS_PANEL_TITLE_MULTIPLE, 2), 2);
+                    expect(tooltip).toBe(expectedTooltip);
                 });
             });
 
@@ -671,7 +823,8 @@ define(function (require, exports, module) {
                     expect($statusBar.is(":visible")).toBe(true);
 
                     var tooltip = $statusBar.attr("title");
-                    expect(tooltip).toBe(Strings.NO_ERRORS_MULTIPLE_PROVIDER);
+                    var expectedTooltip = buildTooltip(Strings.NO_ERRORS_MULTIPLE_PROVIDER, 0);
+                    expect(tooltip).toBe(expectedTooltip);
                 });
             });
 
@@ -686,7 +839,8 @@ define(function (require, exports, module) {
                     expect($statusBar.is(":visible")).toBe(true);
 
                     var tooltip = $statusBar.attr("title");
-                    expect(tooltip).toBe(StringUtils.format(Strings.NO_ERRORS, "JavaScript Linter1"));
+                    var expectedTooltip = buildTooltip(StringUtils.format(Strings.NO_ERRORS, "JavaScript Linter1"), 0);
+                    expect(tooltip).toBe(expectedTooltip);
                 });
             });
             
@@ -768,7 +922,8 @@ define(function (require, exports, module) {
                     expect($statusBar.is(":visible")).toBe(true);
 
                     var tooltip = $statusBar.attr("title");
-                    expect(tooltip).toBe(StringUtils.format(Strings.ERRORS_PANEL_TITLE_MULTIPLE, 2));
+                    var expectedTooltip = buildTooltip(StringUtils.format(Strings.ERRORS_PANEL_TITLE_MULTIPLE, 2), 2);
+                    expect(tooltip).toBe(expectedTooltip);
                 });
             });
             
@@ -810,7 +965,7 @@ define(function (require, exports, module) {
                 });
             });
             
-            it("should report an async linter which throws an exception", function () {
+            it("should report an async linter which rejects", function () {
                 var errorMessage = "I'm full of bugs on purpose",
                     providerName = "Buggy Async Linter",
                     buggyAsyncProvider = {

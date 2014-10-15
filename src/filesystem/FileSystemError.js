@@ -34,11 +34,16 @@
 define(function (require, exports, module) {
     "use strict";
 
+    /**
+     * Enumerated File System Errors
+     * @enum {string}
+     */
     module.exports = {
         UNKNOWN                     : "Unknown",
         INVALID_PARAMS              : "InvalidParams",
         NOT_FOUND                   : "NotFound",
         NOT_READABLE                : "NotReadable",
+        UNSUPPORTED_ENCODING        : "UnsupportedEncoding",
         NOT_SUPPORTED               : "NotSupported",
         NOT_WRITABLE                : "NotWritable",
         OUT_OF_SPACE                : "OutOfSpace",

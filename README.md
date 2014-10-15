@@ -1,4 +1,4 @@
-Welcome to Brackets! [![Build Status](https://travis-ci.org/adobe/brackets.png?branch=master)](https://travis-ci.org/adobe/brackets)
+Welcome to Brackets! [![Build Status](https://travis-ci.org/adobe/brackets.svg?branch=master)](https://travis-ci.org/adobe/brackets)
 -------------------
 
 This is an early version of Brackets, a code editor for HTML, CSS
@@ -55,7 +55,7 @@ see the [extensions wiki page](https://github.com/adobe/brackets/wiki/Brackets-E
 
 #### Need help?
 
-Having problems starting Brackets the first time, or not sure how to use brackets?  Please 
+Having problems starting Brackets the first time, or not sure how to use Brackets?  Please 
 review [Troubleshooting](https://github.com/adobe/brackets/wiki/Troubleshooting), which helps 
 you to fix common problems and find extra help if needed.
 
@@ -86,7 +86,7 @@ Awesome! _There are lots of ways you can help._ First read
 then learn how to [pull the repo and hack on Brackets](https://github.com/adobe/brackets/wiki/How-to-Hack-on-Brackets).
 
 The text editor inside Brackets is based on 
-[CodeMirror](http://github.com/marijnh/CodeMirror)&mdash;thanks to Marijn for
+[CodeMirror](http://github.com/codemirror/CodeMirror)&mdash;thanks to Marijn for
 taking our pull requests, implementing feature requests and fixing bugs! See 
 [Notes on CodeMirror](https://github.com/adobe/brackets/wiki/Notes-on-CodeMirror)
 for info on how we're using CodeMirror.
@@ -112,7 +112,7 @@ Not sure you needed the exclamation point there, but we like your enthusiasm.
 
 #### Contact info
 
-* **Twitter:** [@brackets](http://twitter.com/#!/brackets)
+* **Twitter:** [@brackets](https://twitter.com/brackets)
 * **Blog:** http://blog.brackets.io/
 * **IRC:** [#brackets on freenode](http://webchat.freenode.net/?channels=brackets)
 * **Developers mailing list:** http://groups.google.com/group/brackets-dev

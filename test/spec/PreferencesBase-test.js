@@ -22,7 +22,7 @@
  */
 
 /*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, indent: 4, maxerr: 50 */
-/*global $, define, describe, it, xit, expect, beforeEach, afterEach, waitsFor, waitsForDone, runs, beforeFirst, afterLast, spyOn, brackets */
+/*global $, define, describe, it, expect, beforeEach, afterEach, waitsFor, waitsForDone, runs, beforeFirst */
 /*unittests: Preferences Base*/
 
 define(function (require, exports, module) {
@@ -62,16 +62,6 @@ define(function (require, exports, module) {
         });
         
         describe("Path Layer", function () {
-            var data = {
-                spaceUnits: 4,
-                useTabChar: false,
-                path: {
-                    "*.html": {
-                        spaceUnits: 2
-                    }
-                }
-            };
-            
             it("handles a variety of glob patterns", function () {
                 var data = {
                     "**.html": {
@@ -195,9 +185,7 @@ define(function (require, exports, module) {
                         spaceUnits: 3
                     }
                 };
-                
-                var originalData = _.clone(data, true);
-                
+
                 var layer = new PreferencesBase.PathLayer("/.brackets.json");
                 
                 expect(layer.set(data, "spaceUnits", 11, {
@@ -281,7 +269,7 @@ define(function (require, exports, module) {
                 expect(pm.set("foo", foo).stored).toBe(true);
                 
                 expect(pm.get("foo").value).toBe(42);
-                expect(scope._dirty).toBe(true);
+                expect(scope._dirty).toBe(false);
 
                 // Explicitly save it in order to clear dirty flag.
                 pm.save();
@@ -289,8 +277,10 @@ define(function (require, exports, module) {
                                 
                 foo.value = "!!!";
                 expect(foo.value).toBe("!!!");
-                expect(pm.set("foo", foo).stored).toBe(true);
+                expect(pm.set("foo", foo, undefined, true).stored).toBe(true);
                 expect(scope._dirty).toBe(true);
+                pm.save();
+                expect(scope._dirty).toBe(false);
                 
                 var fooCopyFromPref = pm.get("foo");
                 expect(fooCopyFromPref.value).toBe("!!!");
@@ -1013,7 +1003,8 @@ define(function (require, exports, module) {
             
             it("can provide an automatically prefixed version of itself", function () {
                 var pm = new PreferencesBase.PreferencesSystem();
-                pm.addScope("user", new PreferencesBase.MemoryStorage());
+                var scope = new PreferencesBase.Scope(new PreferencesBase.MemoryStorage());
+                pm.addScope("user", scope);
                 pm.set("spaceUnits", 10);
                 pm.set("linting.enabled", true);
                 
@@ -1032,13 +1023,17 @@ define(function (require, exports, module) {
                     scope: "user"
                 });
                 
-                prefixedPM.set("collapsed", false);
+                // set the value with doNotSave set. Will check to verify that save did not occur.
+                prefixedPM.set("collapsed", false, undefined, true);
                 
                 expect(events).toEqual([{
                     ids: ["collapsed"]
                 }]);
                 
                 expect(prefixedPM.get("collapsed")).toBe(false);
+                
+                // verify that the scope was not saved automatically
+                expect(scope._dirty).toBe(true);
                 expect(pm.get("collapsed")).toBeUndefined();
                 expect(pm.get("linting.collapsed")).toBe(false);
                 
@@ -1079,6 +1074,46 @@ define(function (require, exports, module) {
                 
                 expect(pm.set("spaceUnits", -1).valid).toBe(false); // fail: out-of-range lower
                 expect(pm.get("spaceUnits")).toBe(4);               // expect default
+            });
+            
+            it("should handle context normalization", function () {
+                var normalizer = function (context) {
+                    if (typeof context === "string") {
+                        return {
+                            scopeOrder: [context]
+                        };
+                    }
+                    return context;
+                };
+                
+                var pm = new PreferencesBase.PreferencesSystem(normalizer);
+                pm.addScope("user", new PreferencesBase.MemoryStorage({
+                    value: 1
+                }));
+                pm.addScope("session", new PreferencesBase.MemoryStorage({
+                    value: 2
+                }));
+                expect(pm.get("value")).toBe(2);
+                
+                // Test passing in a string for the get context
+                expect(pm.get("value", "user")).toBe(1);
+                
+                // This will set in the scope in which the value was set. Without a context,
+                // that means "session".
+                pm.set("value", 3);
+                expect(pm.get("value")).toBe(3);
+                expect(pm.get("value", "user")).toBe(1);
+                
+                // Now, set with a context. This should cause the value to be set in "user"
+                // scope.
+                pm.set("value", 4, {
+                    context: "user"
+                });
+                expect(pm.get("value")).toBe(3);
+                expect(pm.get("value", "user")).toBe(4);
+                
+                expect(pm.getPreferenceLocation("value").scope).toBe("session");
+                expect(pm.getPreferenceLocation("value", "user").scope).toBe("user");
             });
         });
         

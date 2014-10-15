@@ -31,7 +31,8 @@
 define(function (require, exports, module) {
     "use strict";
     
-    var FileSystem = require("filesystem/FileSystem");
+    var FileSystem = require("filesystem/FileSystem"),
+        FileUtils  = require("file/FileUtils");
 
     /**
      * Appends a <style> tag to the document's head.
@@ -121,7 +122,12 @@ define(function (require, exports, module) {
             if (err) {
                 result.reject(err);
             } else {
-                result.resolve(tree.toCSS());
+                try {
+                    result.resolve(tree.toCSS());
+                } catch (toCSSError) {
+                    console.error(toCSSError.filename + ":" + toCSSError.line + " " + toCSSError.message);
+                    result.reject(toCSSError);
+                }
             }
         });
         
@@ -175,7 +181,7 @@ define(function (require, exports, module) {
      * @return {!$.Promise} A promise object that is resolved with the contents of the requested file
      **/
     function loadFile(module, path) {
-        var url     = isAbsolutePathOrUrl(path) ? path : getModuleUrl(module, path),
+        var url     = PathUtils.isAbsoluteUrl(path) ? path : getModuleUrl(module, path),
             promise = $.get(url);
 
         return promise;
@@ -217,6 +223,31 @@ define(function (require, exports, module) {
         return result.promise();
     }
     
+    /**
+     * Loads the package.json file in the given extension folder.
+     *
+     * @param {string} folder The extension folder.
+     * @return {$.Promise} A promise object that is resolved with the parsed contents of the package.json file,
+     *     or rejected if there is no package.json or the contents are not valid JSON.
+     */
+    function loadPackageJson(folder) {
+        var file = FileSystem.getFileForPath(folder + "/package.json"),
+            result = new $.Deferred();
+        FileUtils.readAsText(file)
+            .done(function (text) {
+                try {
+                    var json = JSON.parse(text);
+                    result.resolve(json);
+                } catch (e) {
+                    result.reject();
+                }
+            })
+            .fail(function () {
+                result.reject();
+            });
+        return result.promise();
+    }
+    
     exports.addEmbeddedStyleSheet = addEmbeddedStyleSheet;
     exports.addLinkedStyleSheet   = addLinkedStyleSheet;
     exports.parseLessCode         = parseLessCode;
@@ -224,4 +255,5 @@ define(function (require, exports, module) {
     exports.getModuleUrl          = getModuleUrl;
     exports.loadFile              = loadFile;
     exports.loadStyleSheet        = loadStyleSheet;
+    exports.loadPackageJson       = loadPackageJson;
 });
