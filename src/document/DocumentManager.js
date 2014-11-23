@@ -115,7 +115,7 @@ define(function (require, exports, module) {
     /**
      * Returns the existing open Document for the given file, or null if the file is not open ('open'
      * means referenced by the UI somewhere). If you will hang onto the Document, you must addRef()
-     * it; see {@link getDocumentForPath()} for details.
+     * it; see {@link #getDocumentForPath} for details.
      * @param {!string} fullPath
      * @return {?Document}
      */
@@ -586,6 +586,24 @@ define(function (require, exports, module) {
             $(exports).triggerHandler("dirtyFlagChange", doc);
             if (doc.isDirty) {
                 MainViewManager.addToWorkingSet(MainViewManager.ACTIVE_PANE, doc.file);
+                
+                // We just dirtied a doc and added it to the active working set
+                //  this may have come from an internal dirtying so if it was
+                //  added to a working set that had no active document then
+                //  open the document 
+                //
+                // See: https://github.com/adobe/brackets/issues/9569 
+                //
+                // NOTE: Adding a file to the active working set may not actually add
+                //       it to the active working set (e.g. the document was already 
+                //       opened to the inactive working set.)
+                //
+                //       Check that it was actually added to the active working set
+                
+                if (!MainViewManager.getCurrentlyViewedFile() &&
+                        MainViewManager.findInWorkingSet(MainViewManager.ACTIVE_PANE, doc.file.fullPath) !== -1) {
+                    CommandManager.execute(Commands.FILE_OPEN, {fullPath: doc.file.fullPath});
+                }
             }
         })
         .on("_documentSaved", function (event, doc) {
