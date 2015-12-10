@@ -31,11 +31,11 @@
 [submodule "src/extensions/default/JSLint/thirdparty/jslint"]
 	path = src/extensions/default/JSLint/thirdparty/jslint
 	url = https://github.com/douglascrockford/JSLint.git
-[submodule "extensions\\user\\file-tree-exclude"]
-	path = extensions\\user\\file-tree-exclude
+[submodule "extensions/disabled/file-tree-exclude"]
+	path = extensions/disabled/file-tree-exclude
 	url = https://github.com/JonathanWolfe/file-tree-exclude.git
-[submodule "extensions\\user\\brackets-file-tree-exclude"]
-	path = extensions\\user\\brackets-file-tree-exclude
+[submodule "extensions/user/brackets-file-tree-exclude"]
+	path = extensions/user/brackets-file-tree-exclude
 	url = https://github.com/zaggino/brackets-file-tree-exclude.git
 [submodule "extensions/user/markdown-preview"]
 	path = extensions/user/markdown-preview
