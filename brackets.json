@@ -1,0 +1,12 @@
+{
+    "jwolfe.file-tree-exclude.list": [
+        "**/**/node_modules",
+        "**/**/bower_components",
+        "**/**/.git",
+        "**/**/dist",
+        "**/**/vendor"
+    ],
+    "linting.enabled": false,
+    "wordWrap": false,
+    "useTabChar": false
+}

@@ -37,3 +37,6 @@
 [submodule "extensions\\user\\brackets-file-tree-exclude"]
 	path = extensions\\user\\brackets-file-tree-exclude
 	url = https://github.com/zaggino/brackets-file-tree-exclude.git
+[submodule "extensions/user/markdown-preview"]
+	path = extensions/user/markdown-preview
+	url = https://github.com/gruehle/MarkdownPreview.git
