@@ -54,17 +54,14 @@ html, body {
     /* And make sure we get a pointer cursor even over text */
     cursor: default;
 
-    /* Turn off subpixel antialiasing on Mac since it flickers during animations. */
-    -webkit-font-smoothing: antialiased;
-
-    // This is a hack to avoid flicker when animations (like inline editors) that use the GPU complete.
-    // It seems that we have to put it here rather than on the animated element in order to prevent the
-    // entire window from flashing.
-    // See: http://stackoverflow.com/questions/3461441/prevent-flicker-on-webkit-transition-of-webkit-transform
-    // Mac-only though, since this would turn off subpixel antialiasing (ClearType) on Windows
     &.platform-mac {
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
+        // Use gray scale antialiasing for UI. Code view editor-holder
+        // overrides this to use subpixel antialiasing on Mac, which then
+        // can be overridden by setting "fontSmoothing" preference to
+        // "antialiased". Gray scale AA is used for UI parts which use
+        // SourceSansPro font, which does't look good with subpixel AA,
+        // especially on low resolution monitors.
+        -webkit-font-smoothing: antialiased;
     }
 
     .dark,
@@ -73,7 +70,9 @@ html, body {
     }
 }
 
-
+.subpixel-aa{
+    -webkit-font-smoothing: subpixel-antialiased;
+}
 
 .resizing-container {
     position: absolute;
@@ -120,6 +119,10 @@ a, img {
         padding: 0;
         left: @sidebar-width;  // changed dynamically via Resizer
         right: @main-toolbar-width;
+    }
+    
+    .force-right-zero {
+        right: 0;
     }
 }
 
@@ -327,7 +330,7 @@ a, img {
     /* Placeholder shown when there is no editor open */
 
     .view-pane {
-        display: block;
+        display: block !important;
         margin: 0;
         overflow: hidden;
     }
@@ -438,7 +441,7 @@ a, img {
             color: @bc-text-alt;
             background-color: rgba(0, 0, 0, 0.8);
             font-size: 11px;
-            font-family: SourceCodePro;
+            font-family: @sourceFontFamily;
             line-height: 13px;
             border-radius: 3px;
             box-shadow: 0 1px 3px @bc-shadow;
@@ -487,12 +490,97 @@ a, img {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        
+
+        &-text {
+            display: inline;
+        }
+
         .dark & {
             background-color: #1d1f21; // not using a variable on purpose.
             border-bottom-color: rgba(255, 255, 255, 0.05);
         }
+
+        &-flipview-btn {
+            position: relative;
+            display: none;
+            top: 0px;
+            padding-top: 2px;
+            padding-right: 4px;
+            padding-left: 4px;
+            margin-left: 0;
+            margin-bottom: 0;
+            .sprite-icon(0, 0, 13px, 13px, "images/flip-view-icons.svg");
+            background-origin: content-box;
+            -webkit-transform: translateZ(0); // forces GPU mode for better filter rendering on retina
+            transform: translateZ(0); // future proofing
+            -webkit-filter: drop-shadow(0 1px 0 rgba(0,0,0,0.36));
+            filter: drop-shadow(0 1px 0 rgba(0,0,0,0.36));
+            z-index: 1;
+            vertical-align: middle;
+
+            &:hover {
+                background-image: url("images/flip-view-icons-hover.svg")
+            }
+
+            &.flipview-icon-none {
+                display: none;
+            }
+
+            &.flipview-icon-top {
+                background-position: center 1px;
+            }
+            
+            &.flipview-icon-right {
+                background-position: center -18px;
+            }
+
+            &.flipview-icon-bottom {
+                background-position: center -35px;
+            }
+
+            &.flipview-icon-left {
+                background-position: center -54px;
+            }
+        }
+
+        &-close-btn {
+            position: relative;
+            display: none;
+            height: 16px;
+            width: 16px;
+            float: right;
+            margin-top: -2px;
+
+            &:before {
+                color: rgba(0, 0, 0, 0.5);
+            }
+
+            &:hover:before {
+                color: rgba(0, 0, 0, 0.8);
+            }
+
+            .dark & {
+                &:before {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+
+                &:hover:before {
+                    color: rgba(255, 255, 255, 0.8);
+                }
+            }
+        }
+
+        &:hover, &.always-show-header-buttons {
+            > .pane-header-flipview-btn:not(.flipview-icon-none) {
+                display: inline-block;
+            }
+
+            > .pane-header-close-btn {
+                display: inline;
+            }
+        }
     }
+
     .active-pane {
         
         .pane-header {
@@ -640,7 +728,7 @@ a, img {
 
     .line-number {
         color: @bc-text-thin-quiet;
-        font-family: SourceCodePro;
+        font-family: @sourceFontFamily;
         font-size: 11px;
         padding: 4px 0 0 15px;
         text-align: right;
@@ -756,6 +844,7 @@ a, img {
     -webkit-filter: drop-shadow(0 1px 0 rgba(0,0,0,0.36));
     z-index: 1;
 }
+
 .splitview-icon-none {
     background-position: center 1px;
 }
@@ -765,6 +854,8 @@ a, img {
 .splitview-icon-horizontal {
     background-position: center -41px;
 }
+
+
 
 // Show splitview icons on the button's dropdown menu too
 #splitview-menu ul.dropdown-menu > li {
@@ -831,6 +922,7 @@ a, img {
         padding: 0 0 0 8px;
         min-height: 18px;
         vertical-align: baseline;
+        white-space: nowrap;
         
         &.selected a {
             color: @open-working-file-name-highlight;
@@ -1509,6 +1601,17 @@ a, img {
         margin-left: 10px;
     }
 
+    .indexing-group {
+        display: inline-block;
+        margin-left: 10px;
+    }
+
+    .indexing-message {
+        display: inline-block;
+        font-style: italic;
+        margin-left: 5px;
+    }
+
     .message, .no-results-message {
         display: inline-block;
     }
@@ -1742,32 +1845,24 @@ textarea.exclusions-editor {
     }
 }
 
-.smart_autocomplete_container {
-    // the borders show up even if the container is empty, must set height to zero using JS.
+.quick-search-container {
+    border: 1px solid @bc-panel-border;
+    box-sizing: border-box;  // lets QuickSearchField size the width more nicely
     background-color: @bc-panel-bg;
     border-radius: 0 0 4px 4px;
     box-shadow: 0 5px 10px @bc-shadow;
     opacity: 0;
     
-    // Need this for border-radius because there are no borders
-    overflow: hidden;
-    
-    .animation (autocomplete, 90ms, cubic-bezier(.01, .91, 0, .99), 190ms, 1);
+    .animation (autocomplete, 90ms, cubic-bezier(.01, .91, 0, .99), 0, 1);
     -webkit-animation-fill-mode: forwards;
     animation-fill-mode: forwards;
     -webkit-transform-origin: 0 0;
     transform-origin: 0 0;
 
-    // so that border won't show when height is 0.
-    box-sizing: border-box;
-
-    // using this to fix the spacing that breaks item seperators and had to use !important to override inline css
-    width: 434px !important;
-
-    /* smart auto complete doesn't correctly position the container
-     * so these specific padding and margin values are necessary*/
-    padding: 0px;
+    padding: 0;
     margin: 9px 0 0;
+    
+    z-index: @z-index-brackets-context-menu-base;
 
     .dark & {
         background-color: @dark-bc-panel-bg;
@@ -1804,6 +1899,9 @@ textarea.exclusions-editor {
                 background-color: @dark-bc-panel-bg-alt;
             }
         }
+        &:last-child {
+            border-radius: 0 0 4px 4px;  // don't cover over quick-search-container's rounded corners
+        }
 
         &:hover {
             background-color: @bc-panel-bg-hover;
@@ -1813,7 +1911,7 @@ textarea.exclusions-editor {
             }
         }
 
-        &.smart_autocomplete_highlight {
+        &.highlight {
             background-color: @bc-bg-highlight;
             color: @bc-menu-text;
             
