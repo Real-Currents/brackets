@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2015 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,6 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, $, brackets, console */
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -42,6 +39,7 @@ define(function (require, exports, module) {
     });
 
     var ONE_MINUTE = 60 * 1000,
+        ONE_HOUR = 60 * ONE_MINUTE,
         ONE_DAY = 24 * 60 * ONE_MINUTE,
         FIRST_LAUNCH_SEND_DELAY = 30 * ONE_MINUTE,
         timeoutVar;
@@ -65,8 +63,9 @@ define(function (require, exports, module) {
 
         oneTimeHealthData.uuid = userUuid;
         oneTimeHealthData.snapshotTime = Date.now();
+        oneTimeHealthData.productName = brackets.metadata.productName;
         oneTimeHealthData.os = brackets.platform;
-        oneTimeHealthData.userAgent = navigator.userAgent;
+        oneTimeHealthData.userAgent = window.navigator.userAgent;
         oneTimeHealthData.osLanguage = brackets.app.language;
         oneTimeHealthData.bracketsLanguage = brackets.getLocale();
         oneTimeHealthData.bracketsVersion = brackets.metadata.version;
@@ -98,27 +97,31 @@ define(function (require, exports, module) {
 
         getHealthData().done(function (healthData) {
 
-            var url = brackets.config.healthDataServerURL,
+            var urls = brackets.config.healthDataServerURLs,
                 data = JSON.stringify(healthData);
 
-            $.ajax({
-                url: url,
-                type: "POST",
-                data: data,
-                dataType: "text",
-                contentType: "text/plain"
-            })
-                .done(function () {
-                    result.resolve();
+            urls.forEach(url => {
+
+                $.ajax({
+                    url: url,
+                    type: "POST",
+                    data: data,
+                    dataType: "text",
+                    contentType: "text/plain"
                 })
-                .fail(function (jqXHR, status, errorThrown) {
-                    console.error("Error in sending Health Data. Response : " + jqXHR.responseText + ". Status : " + status + ". Error : " + errorThrown);
-                    result.reject();
-                });
-        })
-            .fail(function () {
-                result.reject();
+                    .done(function () {
+                        result.resolve();
+                    })
+                    .fail(function (jqXHR, status, errorThrown) {
+                        console.error("Error in sending Health Data. Response : " + jqXHR.responseText + ". Status : " + status + ". Error : " + errorThrown);
+                        result.reject();
+                    });
+
             });
+
+        }).fail(function () {
+            result.reject();
+        });
 
         return result.promise();
     }
@@ -147,6 +150,14 @@ define(function (require, exports, module) {
             }
 
             if (currentTime >= nextTimeToSend) {
+
+                // Check if the app is not running in dev mode
+                var isDev = electron.remote.require("./utils").isDev;
+                if (isDev()) {
+                    result.reject();
+                    return;
+                }
+
                 // Bump up nextHealthDataSendTime now to avoid any chance of sending data again before 24 hours, e.g. if the server request fails
                 // or the code below crashes
                 PreferencesManager.setViewState("nextHealthDataSendTime", currentTime + ONE_DAY);
@@ -157,16 +168,16 @@ define(function (require, exports, module) {
                         // Logged till now
                         HealthLogger.clearHealthData();
                         result.resolve();
+                        timeoutVar = setTimeout(checkHealthDataSend, ONE_DAY + ONE_MINUTE);
                     })
                     .fail(function () {
+                        PreferencesManager.setViewState("nextHealthDataSendTime", currentTime + ONE_HOUR);
                         result.reject();
-                    })
-                    .always(function () {
-                        timeoutVar = setTimeout(checkHealthDataSend, ONE_DAY);
+                        timeoutVar = setTimeout(checkHealthDataSend, ONE_HOUR + ONE_MINUTE);
                     });
 
             } else {
-                timeoutVar = setTimeout(checkHealthDataSend, nextTimeToSend - currentTime);
+                timeoutVar = setTimeout(checkHealthDataSend, nextTimeToSend - currentTime + ONE_MINUTE);
                 result.reject();
             }
         } else {

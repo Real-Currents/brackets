@@ -1,5 +1,35 @@
-Welcome to Brackets! [![Build Status](https://travis-ci.org/adobe/brackets.svg?branch=master)](https://travis-ci.org/adobe/brackets)
--------------------
+# brackets-electron
+
+Windows: [![Build status](https://ci.appveyor.com/api/projects/status/e1ib9s6nn5aeymis?svg=true)](https://ci.appveyor.com/project/zaggino/brackets-electron)
+
+Mac, Linux: [![Build Status](https://travis-ci.org/zaggino/brackets-electron.svg?branch=master)](https://travis-ci.org/zaggino/brackets-electron)
+
+## how does this differ to regular brackets?
+
+Brackets-Electron `x.y.z` will follow `x.y` of Brackets releases, with `z` being reserved for patches and merges of latest features which are available in brackets master repository and planned to be released in the next version. This way you can preview the upcoming features without running brackets from source.
+
+- CEF shell is gone, improves experience mainly to Linux users
+- shell websocket server is gone, improves performance and stability for node domain code
+- node domains run in their own processes, improves perfomance as they don't block each other 
+
+## how to build from master
+
+```
+git clone https://github.com/zaggino/brackets-electron
+cd brackets-electron
+git submodule update --init
+npm install
+npm run dist
+```
+
+You'll find runnable Brackets-Electron in `dist-build` directory.
+
+## how to hack
+
+run `npm run dev` in one terminal, `npm start` in the other, be sure to do the usual updates (git pull, git submodule update, npm install, etc) before.
+
+Welcome to Brackets!
+--------------------
 
 Brackets is a modern open-source code editor for HTML, CSS
 and JavaScript that's *built* in HTML, CSS and JavaScript. 
@@ -34,6 +64,9 @@ The Linux version has most of the features of the Mac and Windows versions, but
 is still missing a few things. See the [Linux wiki page](https://github.com/adobe/brackets/wiki/Linux-Version)
 for a list of known issues and to find out how you can help.
 
+Additionally, for a list of common Linux installation issues and workarounds you can [visit this guide](https://github.com/adobe/brackets/wiki/Brackets-Linux-Guide).
+
+
 #### Usage
 
 By default, Brackets opens a folder containing some simple "Getting Started" content.
@@ -56,7 +89,6 @@ see the [extensions wiki page](https://github.com/adobe/brackets/wiki/Brackets-E
 Having problems starting Brackets the first time, or not sure how to use Brackets?  Please 
 review [Troubleshooting](https://github.com/adobe/brackets/wiki/Troubleshooting), which helps 
 you to fix common problems and find extra help if needed.
-
 
 Helping Brackets
 ----------------
@@ -111,9 +143,13 @@ Not sure you needed the exclamation point there, but we like your enthusiasm.
 
 #### Contact info
 
-* **Slack:** [Brackets on Slack](https://brackets.slack.com) (You can join by [requesting an invite](https://brackets-slack.herokuapp.com/))
+* **E-mail:** [admin@brackets.io](mailto:admin@brackets.io)
+* **Slack:** [Brackets on Slack](https://brackets.slack.com) (You can join by sending a mail to [admin@brackets.io](mailto:admin@brackets.io) with the subject line `slack registration request` specifying the email addresses you would like to register).
 * **Developers mailing list:** http://groups.google.com/group/brackets-dev
 * **Twitter:** [@brackets](https://twitter.com/brackets)
 * **Blog:** http://blog.brackets.io/
 * **IRC:** [#brackets on freenode](http://webchat.freenode.net/?channels=brackets)
 
+---
+
+Please note that this project is released with a [Contributor Code of Conduct](https://github.com/adobe/brackets/blob/master/CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2013 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,12 +20,20 @@
  * DEALINGS IN THE SOFTWARE.
  *
  */
-/*global module, require*/
-module.exports = function (grunt) {
-    'use strict';
 
+/*eslint-env node */
+/*jslint node: true */
+'use strict';
+
+module.exports = function (grunt) {
     // load dependencies
-    require('load-grunt-tasks')(grunt, {pattern: ['grunt-contrib-*', 'grunt-targethtml', 'grunt-usemin', 'grunt-cleanempty', 'grunt-eslint']});
+    require('load-grunt-tasks')(grunt, {
+        pattern: [
+            'grunt-*',
+            '!grunt-cli',
+            '!grunt-template-jasmine-requirejs'
+        ]
+    });
     grunt.loadTasks('tasks');
 
     // Project configuration.
@@ -58,8 +66,8 @@ module.exports = function (grunt) {
                             'nls/{,*/}*.js',
                             'xorigin.js',
                             'dependencies.js',
-                            'thirdparty/requirejs/require.js',
                             'LiveDevelopment/launch.html',
+                            'LiveDevelopment/transports/**',
                             'LiveDevelopment/MultiBrowserImpl/transports/**',
                             'LiveDevelopment/MultiBrowserImpl/launchers/**'
                         ]
@@ -94,13 +102,7 @@ module.exports = function (grunt) {
                             '!extensions/default/*/thirdparty/**/*.htm{,l}',
                             'extensions/dev/*',
                             'extensions/samples/**/*',
-                            'thirdparty/CodeMirror/addon/{,*/}*',
-                            'thirdparty/CodeMirror/keymap/{,*/}*',
-                            'thirdparty/CodeMirror/lib/{,*/}*',
-                            'thirdparty/CodeMirror/mode/{,*/}*',
-                            '!thirdparty/CodeMirror/mode/**/*.html',
-                            '!thirdparty/CodeMirror/**/*test.js',
-                            'thirdparty/CodeMirror/theme/{,*/}*',
+                            'thirdparty/CodeMirror/**',
                             'thirdparty/i18n/*.js',
                             'thirdparty/text/*.js'
                         ]
@@ -111,6 +113,31 @@ module.exports = function (grunt) {
                         dest: 'dist/styles',
                         cwd: 'src/styles',
                         src: ['jsTreeTheme.css', 'fonts/{,*/}*.*', 'images/*', 'brackets.min.css*']
+                    }
+                ]
+            },
+            thirdparty: {
+                files: [
+                    {
+                        expand: true,
+                        dest: 'dist/www/thirdparty/CodeMirror',
+                        cwd: 'dist/www/node_modules/codemirror',
+                        src: [
+                            'addon/{,*/}*',
+                            'keymap/{,*/}*',
+                            'lib/{,*/}*',
+                            'mode/{,*/}*',
+                            'theme/{,*/}*',
+                        ]
+                    },
+                    {
+                        expand: true,
+                        flatten: true,
+                        dest: 'dist/www/thirdparty',
+                        cwd: 'dist/www/node_modules',
+                        src: [
+                            'less/dist/less.min.js'
+                        ]
                     }
                 ]
             }
@@ -267,16 +294,11 @@ module.exports = function (grunt) {
                 specs : '<%= meta.specs %>',
                 /* Keep in sync with test/SpecRunner.html dependencies */
                 vendor : [
-                    'test/polyfills.js', /* For reference to why this polyfill is needed see Issue #7951. The need for this should go away once the version of phantomjs gets upgraded to 2.0 */
+                    // For reference to why this polyfill is needed see Issue #7951.
+                    // The need for this should go away once the version of phantomjs gets upgraded to 2.0
+                    'test/polyfills.js',
                     'src/thirdparty/jquery-2.1.3.min.js',
-                    'src/thirdparty/CodeMirror/lib/codemirror.js',
-                    'src/thirdparty/CodeMirror/lib/util/dialog.js',
-                    'src/thirdparty/CodeMirror/lib/util/searchcursor.js',
-                    'src/thirdparty/CodeMirror/addon/edit/closetag.js',
-                    'src/thirdparty/CodeMirror/addon/selection/active-line.js',
-                    'src/thirdparty/mustache/mustache.js',
-                    'src/thirdparty/path-utils/path-utils.min',
-                    'src/thirdparty/less-2.5.1.min.js'
+                    'src/thirdparty/less.min.js'
                 ],
                 helpers : [
                     'test/spec/PhantomHelper.js'
@@ -316,32 +338,44 @@ module.exports = function (grunt) {
     });
 
     // task: install
-    grunt.registerTask('install', ['write-config', 'less']);
+    grunt.registerTask('install', ['write-config', 'sync-tsconfigs', 'less', /*"npm-install-src", "npm-install-extensions-src"*/]);
 
     // task: test
     grunt.registerTask('test', ['eslint', 'jasmine', 'nls-check']);
-//    grunt.registerTask('test', ['eslint', 'jasmine', 'jasmine_node', 'nls-check']);
 
     // task: set-release
     // Update version number in package.json and rewrite src/config.json
     grunt.registerTask('set-release', ['update-release-number', 'write-config']);
 
-    // task: build
+    // task: dep-change - run when you modify dependencies in package.json
+    grunt.registerTask('dep-change', [
+        'npm-shrinkwrap'
+    ]);
+
+    // task: build - build stuff into dist folder
     grunt.registerTask('build', [
-        'eslint:src',
-        'jasmine',
-        'clean',
-        'less',
-        'targethtml',
-        'useminPrepare',
-        'htmlmin',
-        'requirejs',
-        'concat',
-        /*'cssmin',*/
-        /*'uglify',*/
-        'copy',
-        'cleanempty',
-        'usemin',
+        'npm-install-dist',
+        'copy:thirdparty',
+        'npm-install-extensions-dist',
+        'webpack-browser-dependencies'
+    ]);
+
+    // task: optimize - optimize contents of dist folder
+    grunt.registerTask('optimize', [
+        // 'eslint:src',
+        // 'jasmine',
+        // 'clean',
+        // 'less',
+        // 'targethtml',
+        // 'useminPrepare',
+        // 'htmlmin',
+        // 'requirejs',
+        // 'concat',
+        // 'cssmin',
+        // 'uglify',
+        // 'copy',
+        // 'cleanempty',
+        // 'usemin',
         'build-config'
     ]);
 

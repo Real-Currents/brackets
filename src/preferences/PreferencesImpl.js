@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2014 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,6 @@
  *
  */
 
-
-/*global define, $, brackets */
-
 /**
  * Generates the fully configured preferences systems used throughout Brackets. This is intended
  * to be essentially private implementation that can be overridden for tests.
@@ -31,12 +28,14 @@
 define(function (require, exports, module) {
     "use strict";
 
+    var isDev = electron.remote.require("./utils").isDev();
+
     var PreferencesBase = require("./PreferencesBase"),
         Async           = require("utils/Async"),
 
         // The SETTINGS_FILENAME is used with a preceding "." within user projects
         SETTINGS_FILENAME = "brackets.json",
-        STATE_FILENAME    = "state.json",
+        STATE_FILENAME    = isDev ? "state-dev.json" : "state.json",
 
         // User-level preferences
         userPrefFile = brackets.app.getApplicationSupportDirectory() + "/" + SETTINGS_FILENAME;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2013 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,8 +28,7 @@
  * from an outer scope.
  */
 
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $, Worker, setTimeout */
+/*global Worker */
 
 define(function (require, exports, module) {
     "use strict";
@@ -48,7 +47,8 @@ define(function (require, exports, module) {
         PreferencesManager  = brackets.getModule("preferences/PreferencesManager"),
         ProjectManager      = brackets.getModule("project/ProjectManager"),
         Strings             = brackets.getModule("strings"),
-        StringUtils         = brackets.getModule("utils/StringUtils");
+        StringUtils         = brackets.getModule("utils/StringUtils"),
+        InMemoryFile        = brackets.getModule("document/InMemoryFile");
 
     var HintUtils           = require("HintUtils"),
         MessageIds          = require("MessageIds"),
@@ -56,7 +56,7 @@ define(function (require, exports, module) {
 
     var ternEnvironment     = [],
         pendingTernRequests = {},
-        builtinFiles        = ["ecma5.json", "browser.json", "jquery.json"],
+        builtinFiles        = ["ecmascript.json", "browser.json", "jquery.json"],
         builtinLibraryNames = [],
         isDocumentDirty     = false,
         _hintCount          = 0,
@@ -85,7 +85,7 @@ define(function (require, exports, module) {
      * Read in the json files that have type information for the builtins, dom,etc
      */
     function initTernEnv() {
-        var path = ExtensionUtils.getModulePath(module, "thirdparty/tern/defs/"),
+        var path = ExtensionUtils.getModulePath(module, "node_modules/tern/defs/"),
             files = builtinFiles,
             library;
 
@@ -1169,59 +1169,65 @@ define(function (require, exports, module) {
 
             ensurePreferences();
             deferredPreferences.done(function () {
-                FileSystem.resolve(dir, function (err, directory) {
-                    if (err) {
-                        console.error("Error resolving", dir);
-                        addFilesDeferred.resolveWith(null);
-                        return;
-                    }
-
-                    directory.getContents(function (err, contents) {
+                if (!file instanceof InMemoryFile) {
+                    FileSystem.resolve(dir, function (err, directory) {
                         if (err) {
-                            console.error("Error getting contents for", directory);
+                            console.error("Error resolving", dir);
                             addFilesDeferred.resolveWith(null);
                             return;
                         }
 
-                        var files = contents
-                            .filter(function (entry) {
-                                return entry.isFile && !isFileExcluded(entry);
-                            })
-                            .map(function (entry) {
-                                return entry.fullPath;
-                            });
-
-                        initTernServer(dir, files);
-
-                        var hintsPromise = primePump(path);
-                        hintsPromise.done(function () {
-                            if (!usingModules()) {
-                                // Read the subdirectories of the new file's directory.
-                                // Read them first in case there are too many files to
-                                // read in the project.
-                                addAllFilesAndSubdirectories(dir, function () {
-                                    // If the file is in the project root, then read
-                                    // all the files under the project root.
-                                    var currentDir = (dir + "/");
-                                    if (projectRoot && currentDir !== projectRoot &&
-                                            currentDir.indexOf(projectRoot) === 0) {
-                                        addAllFilesAndSubdirectories(projectRoot, function () {
-                                            // prime the pump again but this time don't wait
-                                            // for completion.
-                                            primePump(path);
-
-                                            addFilesDeferred.resolveWith(null, [_ternWorker]);
-                                        });
-                                    } else {
-                                        addFilesDeferred.resolveWith(null, [_ternWorker]);
-                                    }
-                                });
-                            } else {
-                                addFilesDeferred.resolveWith(null, [_ternWorker]);
+                        directory.getContents(function (err, contents) {
+                            if (err) {
+                                console.error("Error getting contents for", directory);
+                                addFilesDeferred.resolveWith(null);
+                                return;
                             }
+
+                            var files = contents
+                                .filter(function (entry) {
+                                    return entry.isFile && !isFileExcluded(entry);
+                                })
+                                .map(function (entry) {
+                                    return entry.fullPath;
+                                });
+
+                            initTernServer(dir, files);
+
+                            var hintsPromise = primePump(path);
+                            hintsPromise.done(function () {
+                                if (!usingModules()) {
+                                    // Read the subdirectories of the new file's directory.
+                                    // Read them first in case there are too many files to
+                                    // read in the project.
+                                    addAllFilesAndSubdirectories(dir, function () {
+                                        // If the file is in the project root, then read
+                                        // all the files under the project root.
+                                        var currentDir = (dir + "/");
+                                        if (projectRoot && currentDir !== projectRoot &&
+                                                currentDir.indexOf(projectRoot) === 0) {
+                                            addAllFilesAndSubdirectories(projectRoot, function () {
+                                                // prime the pump again but this time don't wait
+                                                // for completion.
+                                                primePump(path);
+
+                                                addFilesDeferred.resolveWith(null, [_ternWorker]);
+                                            });
+                                        } else {
+                                            addFilesDeferred.resolveWith(null, [_ternWorker]);
+                                        }
+                                    });
+                                } else {
+                                    addFilesDeferred.resolveWith(null, [_ternWorker]);
+                                }
+                            });
                         });
                     });
-                });
+                } else {
+                    initTernServer(pr, []);
+                    primePump(path);
+                    addFilesDeferred.resolveWith(null, [_ternWorker]);
+                }
             });
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2013 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,17 +20,18 @@
  * DEALINGS IN THE SOFTWARE.
  *
  */
-/*jslint nomen:true */
-/*global module, require, process */
-module.exports = function (grunt) {
-    "use strict";
 
+/*eslint-env node */
+/*jslint node: true */
+"use strict";
+
+module.exports = function (grunt) {
     var common      = {},
         path        = require("path"),
         _platform;
 
     function writeJSON(grunt, path, obj) {
-        grunt.file.write(path, JSON.stringify(obj, null, "    "));
+        grunt.file.write(path, JSON.stringify(obj, null, "    ") + "\n");
     }
 
     function resolve(relPath) {

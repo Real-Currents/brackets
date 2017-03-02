@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,7 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, describe, it, expect, beforeEach, afterEach, jasmine, spyOn */
+/*global describe, it, expect, beforeEach, afterEach, jasmine, spyOn */
 
 define(function (require, exports, module) {
     'use strict';
@@ -1931,6 +1929,84 @@ define(function (require, exports, module) {
                     lines[2] = "\t\t\tindentme();";
                     expect(myEditor.document.getText()).toEqual(lines.join("\n"));
                 });
+            });
+        });
+        
+        describe("Gutter APIs", function () {
+            var leftGutter = "left",
+                rightGutter = "right",
+                lineNumberGutter = "CodeMirror-linenumbers";
+                
+            beforeEach(function () {
+                createTestEditor(defaultContent, "javascript");
+                Editor.registerGutter(leftGutter, 1);
+                Editor.registerGutter(rightGutter, 101);
+            });
+            
+            afterEach(function () {
+                var nonLineNumberGutters = Editor.getRegisteredGutters().map(function (gutter) {
+                    return gutter.name;
+                });
+                nonLineNumberGutters.forEach(function (gutter) {
+                    if (gutter !== lineNumberGutter) {
+                        Editor.unregisterGutter(gutter);
+                    }
+                });
+            });
+            
+            it("should register multiple gutters in the correct order", function () {
+                var expectedGutters = [leftGutter, lineNumberGutter, rightGutter];
+                var gutters  = myEditor._codeMirror.getOption("gutters");
+                var registeredGutters = Editor.getRegisteredGutters().map(function (gutter) {
+                    return gutter.name;
+                });
+                expect(gutters).toEqual(expectedGutters);
+                expect(registeredGutters).toEqual(expectedGutters);
+            });
+            
+            it("should return gutters registered with the same priority in insertion order", function () {
+                var secondRightGutter = "second-right";
+                Editor.registerGutter(secondRightGutter, 101);
+                var expectedGutters = [leftGutter, lineNumberGutter, rightGutter, secondRightGutter];
+                var gutters  = myEditor._codeMirror.getOption("gutters");
+                var registeredGutters = Editor.getRegisteredGutters().map(function (gutter) {
+                    return gutter.name;
+                });
+                expect(gutters).toEqual(expectedGutters);
+                expect(registeredGutters).toEqual(expectedGutters);
+            });
+            
+            it("should have only gutters registered with the intended languageIds ", function () {
+                var lessOnlyGutter = "less-only-gutter";
+                Editor.registerGutter(lessOnlyGutter, 101, ["less"]);
+                var expectedGutters = [leftGutter, lineNumberGutter, rightGutter];
+                var expectedRegisteredGutters = [leftGutter, lineNumberGutter, rightGutter, lessOnlyGutter];
+                var gutters  = myEditor._codeMirror.getOption("gutters");
+                var registeredGutters = Editor.getRegisteredGutters().map(function (gutter) {
+                    return gutter.name;
+                });
+                expect(gutters).toEqual(expectedGutters);
+                expect(registeredGutters).toEqual(expectedRegisteredGutters);
+            });
+            
+            it("should unregister gutters correctly", function () {
+                Editor.unregisterGutter(leftGutter);
+                Editor.unregisterGutter(rightGutter);
+                Editor.registerGutter(leftGutter, 1);
+                var expectedGutters = [leftGutter, lineNumberGutter];
+                var gutters  = myEditor._codeMirror.getOption("gutters");
+                var registeredGutters = Editor.getRegisteredGutters().map(function (gutter) {
+                    return gutter.name;
+                });
+                expect(gutters).toEqual(expectedGutters);
+                expect(registeredGutters).toEqual(expectedGutters);
+            });
+            
+            it("should set gutter marker correctly", function () {
+                var marker = window.document.createElement("div");
+                myEditor.setGutterMarker(1, leftGutter, marker);
+                var lineInfo = myEditor._codeMirror.lineInfo(1);
+                expect(lineInfo.gutterMarkers[leftGutter], marker);
             });
         });
     });

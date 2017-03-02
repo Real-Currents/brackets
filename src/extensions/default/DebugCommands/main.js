@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,7 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, regexp: true */
-/*global define, $, brackets, window, Mustache*/
+/*jslint regexp: true */
 
 define(function (require, exports, module) {
     "use strict";
@@ -44,8 +42,8 @@ define(function (require, exports, module) {
         MainViewManager        = brackets.getModule("view/MainViewManager"),
         WorkingSetView         = brackets.getModule("project/WorkingSetView"),
         ExtensionManager       = brackets.getModule("extensibility/ExtensionManager"),
+        Mustache               = brackets.getModule("thirdparty/mustache/mustache"),
         ErrorNotification      = require("ErrorNotification"),
-        NodeDebugUtils         = require("NodeDebugUtils"),
         PerfDialogTemplate     = require("text!htmlContent/perf-dialog.html"),
         LanguageDialogTemplate = require("text!htmlContent/language-dialog.html");
 
@@ -75,9 +73,6 @@ define(function (require, exports, module) {
         DEBUG_RELOAD_WITHOUT_USER_EXTS        = "debug.reloadWithoutUserExts",
         DEBUG_NEW_BRACKETS_WINDOW             = "debug.newBracketsWindow",
         DEBUG_SWITCH_LANGUAGE                 = "debug.switchLanguage",
-        DEBUG_ENABLE_NODE_DEBUGGER            = "debug.enableNodeDebugger",
-        DEBUG_LOG_NODE_STATE                  = "debug.logNodeState",
-        DEBUG_RESTART_NODE                    = "debug.restartNode",
         DEBUG_SHOW_ERRORS_IN_STATUS_BAR       = "debug.showErrorsInStatusBar",
         DEBUG_OPEN_BRACKETS_SOURCE            = "debug.openBracketsSource",
         DEBUG_OPEN_PREFERENCES_IN_SPLIT_VIEW  = "debug.openPrefsInSplitView";
@@ -101,18 +96,18 @@ define(function (require, exports, module) {
     }
 
     // Implements the 'Run Tests' menu to bring up the Jasmine unit test window
-    var _testWindow = null;
+    var BracketsWindow = window.electron.remote.require("./test-brackets-window");
+    var TEST_WINDOW_ID = "brackets-test";
     function _runUnitTests(spec) {
         var queryString = spec ? "?spec=" + spec : "";
-        if (_testWindow && !_testWindow.closed) {
-            if (_testWindow.location.search !== queryString) {
-                _testWindow.location.href = "../test/SpecRunner.html" + queryString;
-            } else {
-                _testWindow.location.reload(true);
-            }
+        var url = [window.location.href, "../test/SpecRunner.html" + queryString];
+        if (BracketsWindow.isOpen(TEST_WINDOW_ID)) {
+            BracketsWindow.loadURL(url, TEST_WINDOW_ID);
         } else {
-            _testWindow = window.open("../test/SpecRunner.html" + queryString, "brackets-test", "width=" + $(window).width() + ",height=" + $(window).height());
-            _testWindow.location.reload(true); // if it had been opened earlier, force a reload because it will be cached
+            BracketsWindow.open(url, TEST_WINDOW_ID, {
+                width: $(window).width(),
+                height: $(window).height()
+            });
         }
     }
 
@@ -776,11 +771,6 @@ define(function (require, exports, module) {
     CommandManager.register(Strings.CMD_SWITCH_LANGUAGE,           DEBUG_SWITCH_LANGUAGE,           handleSwitchLanguage);
     CommandManager.register(Strings.CMD_SHOW_ERRORS_IN_STATUS_BAR, DEBUG_SHOW_ERRORS_IN_STATUS_BAR, toggleErrorNotification);
 
-    // Node-related Commands
-    CommandManager.register(Strings.CMD_ENABLE_NODE_DEBUGGER, DEBUG_ENABLE_NODE_DEBUGGER,   NodeDebugUtils.enableDebugger);
-    CommandManager.register(Strings.CMD_LOG_NODE_STATE,       DEBUG_LOG_NODE_STATE,         NodeDebugUtils.logNodeState);
-    CommandManager.register(Strings.CMD_RESTART_NODE,         DEBUG_RESTART_NODE,           NodeDebugUtils.restartNode);
-
     CommandManager.register(Strings.CMD_OPEN_PREFERENCES, DEBUG_OPEN_PREFERENCES_IN_SPLIT_VIEW, handleOpenPrefsInSplitView);
 
     enableRunTestsMenuItem();
@@ -805,9 +795,6 @@ define(function (require, exports, module) {
     menu.addMenuItem(DEBUG_SHOW_PERF_DATA);
     menu.addMenuItem(DEBUG_OPEN_BRACKETS_SOURCE);
     menu.addMenuDivider();
-    menu.addMenuItem(DEBUG_ENABLE_NODE_DEBUGGER);
-    menu.addMenuItem(DEBUG_LOG_NODE_STATE);
-    menu.addMenuItem(DEBUG_RESTART_NODE);
     menu.addMenuItem(DEBUG_SHOW_ERRORS_IN_STATUS_BAR);
     menu.addMenuItem(DEBUG_OPEN_PREFERENCES_IN_SPLIT_VIEW); // this command will enable defaultPreferences and brackets preferences to be open side by side in split view.
     menu.addMenuItem(Commands.FILE_OPEN_KEYMAP);      // this command is defined in core, but exposed only in Debug menu for now

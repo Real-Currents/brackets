@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,10 +21,8 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, browser: true, nomen: true, indent: 4, forin: true, maxerr: 50, regexp: true */
-/*jshint unused: false */
-/*global window, navigator, Node, console */
+/*jslint forin: true */
+/*global Node */
 /*theseus instrument: false */
 
 /**
@@ -32,7 +30,7 @@
  * modules should define a single function that returns an object of all
  * exported functions.
  */
-function RemoteFunctions(experimental) {
+function RemoteFunctions(experimental, remoteWSPort) {
     "use strict";
 
     var lastKeepAliveTime = Date.now();
@@ -47,7 +45,7 @@ function RemoteFunctions(experimental) {
 
     // determine whether an event should be processed for Live Development
     function _validEvent(event) {
-        if (navigator.platform.substr(0, 3) === "Mac") {
+        if (window.navigator.platform.substr(0, 3) === "Mac") {
             // Mac
             return event.metaKey;
         } else {
@@ -100,6 +98,23 @@ function RemoteFunctions(experimental) {
             element.removeAttribute(key);
         }
     }
+    
+    // Checks if the element is in Viewport in the client browser
+    function isInViewport(element) {
+        var rect = element.getBoundingClientRect();
+        var html = window.document.documentElement;
+        return (
+            rect.top >= 0 &&
+            rect.left >= 0 &&
+            rect.bottom <= (window.innerHeight || html.clientHeight) &&
+            rect.right <= (window.innerWidth || html.clientWidth)
+        );
+    }
+    
+    // returns the distance from the top of the closest relatively positioned parent element
+    function getDocumentOffsetTop(element) {
+        return element.offsetTop + (element.offsetParent ? getDocumentOffsetTop(element.offsetParent) : 0);
+    }
 
     // construct the info menu
     function Menu(element) {
@@ -127,7 +142,7 @@ function RemoteFunctions(experimental) {
                 y = offset.top + this.element.offsetHeight;
 
             // create the container
-            this.body = document.createElement("div");
+            this.body = window.document.createElement("div");
             this.body.style.setProperty("z-index", 2147483647);
             this.body.style.setProperty("position", "absolute");
             this.body.style.setProperty("left", x + "px");
@@ -143,7 +158,7 @@ function RemoteFunctions(experimental) {
         },
 
         addItem: function (target) {
-            var item = document.createElement("div");
+            var item = window.document.createElement("div");
             item.style.setProperty("padding", "2px 6px");
             if (this.body.childNodes.length > 0) {
                 item.style.setProperty("border-top", "1px solid #ccc");
@@ -154,7 +169,7 @@ function RemoteFunctions(experimental) {
             item.addEventListener("click", this.onClick.bind(this, target.url));
 
             if (target.file) {
-                var file = document.createElement("i");
+                var file = window.document.createElement("i");
                 file.style.setProperty("float", "right");
                 file.style.setProperty("margin-left", "12px");
                 file.innerHTML = " " + target.file;
@@ -168,16 +183,16 @@ function RemoteFunctions(experimental) {
                 this.body = this.createBody();
             }
             if (!this.body.parentNode) {
-                document.body.appendChild(this.body);
+                window.document.body.appendChild(this.body);
             }
-            document.addEventListener("click", this.remove);
+            window.document.addEventListener("click", this.remove);
         },
 
         remove: function () {
             if (this.body && this.body.parentNode) {
-                document.body.removeChild(this.body);
+                window.document.body.removeChild(this.body);
             }
-            document.removeEventListener("click", this.remove);
+            window.document.removeEventListener("click", this.remove);
         }
 
     };
@@ -315,11 +330,19 @@ function RemoteFunctions(experimental) {
         },
 
         add: function (element, doAnimation) {
-            if (this._elementExists(element) || element === document) {
+            if (this._elementExists(element) || element === window.document) {
                 return;
             }
             if (this.trigger) {
                 _trigger(element, "highlight", 1);
+            }
+            
+            if (!window.event && !isInViewport(element)) {
+                var top = getDocumentOffsetTop(element);
+                if (top) {
+                    top -= (window.innerHeight / 2);
+                    window.scrollTo(0, top);
+                }
             }
             this.elements.push(element);
 
@@ -395,7 +418,7 @@ function RemoteFunctions(experimental) {
 
     function onMouseMove(event) {
         onMouseOver(event);
-        document.removeEventListener("mousemove", onMouseMove);
+        window.document.removeEventListener("mousemove", onMouseMove);
     }
 
     function onClick(event) {
@@ -412,11 +435,11 @@ function RemoteFunctions(experimental) {
 
     function onKeyUp(event) {
         if (_setup && !_validEvent(event)) {
-            document.removeEventListener("keyup", onKeyUp);
-            document.removeEventListener("mouseover", onMouseOver);
-            document.removeEventListener("mouseout", onMouseOut);
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("click", onClick);
+            window.document.removeEventListener("keyup", onKeyUp);
+            window.document.removeEventListener("mouseover", onMouseOver);
+            window.document.removeEventListener("mouseout", onMouseOut);
+            window.document.removeEventListener("mousemove", onMouseMove);
+            window.document.removeEventListener("click", onClick);
             _localHighlight.clear();
             _localHighlight = undefined;
             _setup = false;
@@ -425,11 +448,11 @@ function RemoteFunctions(experimental) {
 
     function onKeyDown(event) {
         if (!_setup && _validEvent(event)) {
-            document.addEventListener("keyup", onKeyUp);
-            document.addEventListener("mouseover", onMouseOver);
-            document.addEventListener("mouseout", onMouseOut);
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("click", onClick);
+            window.document.addEventListener("keyup", onKeyUp);
+            window.document.addEventListener("mouseover", onMouseOver);
+            window.document.addEventListener("mouseout", onMouseOut);
+            window.document.addEventListener("mousemove", onMouseMove);
+            window.document.addEventListener("click", onClick);
             _localHighlight = new Highlight("#ecc", true);
             _setup = true;
         }
@@ -479,7 +502,7 @@ function RemoteFunctions(experimental) {
     // highlight a rule
     function highlightRule(rule) {
         hideHighlight();
-        var i, nodes = document.querySelectorAll(rule);
+        var i, nodes = window.document.querySelectorAll(rule);
         for (i = 0; i < nodes.length; i++) {
             highlight(nodes[i]);
         }
@@ -500,7 +523,7 @@ function RemoteFunctions(experimental) {
     function _scrollHandler(e) {
         // Document scrolls can be updated immediately. Any other scrolls
         // need to be updated on a timer to ensure the layout is correct.
-        if (e.target === document) {
+        if (e.target === window.document) {
             redrawHighlights();
         } else {
             if (_remoteHighlight || _localHighlight) {
@@ -817,7 +840,7 @@ function RemoteFunctions(experimental) {
     }
 
     function getSimpleDOM() {
-        return JSON.stringify(_domElementToJSON(document.documentElement));
+        return JSON.stringify(_domElementToJSON(window.document.documentElement));
     }
 
     // init
@@ -826,7 +849,42 @@ function RemoteFunctions(experimental) {
     if (experimental) {
         window.document.addEventListener("keydown", onKeyDown);
     }
+    
+    var _ws = null;
 
+    function onDocumentClick(event) {
+        var element = event.target,
+            currentDataId,
+            newDataId;
+        
+        if (_ws && element && element.hasAttribute('data-brackets-id')) {
+            _ws.send(JSON.stringify({
+                type: "message",
+                message: element.getAttribute('data-brackets-id')
+            }));
+        }
+    }
+    
+    
+    function createWebSocket() {
+        _ws = new WebSocket("ws://localhost:" + remoteWSPort);
+        _ws.onopen = function () {
+            window.document.addEventListener("click", onDocumentClick);
+        };
+				
+        _ws.onmessage = function (evt) {
+        };
+				
+        _ws.onclose = function () {
+            // websocket is closed
+            window.document.removeEventListener("click", onDocumentClick);
+        };
+    }
+    
+    if (remoteWSPort) {
+        createWebSocket();
+    }
+    
     return {
         "DOMEditHandler"        : DOMEditHandler,
         "keepAlive"             : keepAlive,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2013 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,10 +21,7 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true,
-indent: 4, maxerr: 50 */
-/*global define, $, brackets, PathUtils */
+/*jslint regexp: true */
 
 /**
  * Functions for working with extension packages
@@ -39,7 +36,8 @@ define(function (require, exports, module) {
         Strings              = require("strings"),
         ExtensionLoader      = require("utils/ExtensionLoader"),
         NodeConnection       = require("utils/NodeConnection"),
-        PreferencesManager   = require("preferences/PreferencesManager");
+        PreferencesManager   = require("preferences/PreferencesManager"),
+        PathUtils            = require("thirdparty/path-utils/path-utils");
 
     PreferencesManager.definePreference("proxy", "string", undefined, {
         description: Strings.DESCRIPTION_PROXY
@@ -107,7 +105,12 @@ define(function (require, exports, module) {
     function validate(path, options) {
         return _extensionManagerCall(function (extensionManager) {
             var d = new $.Deferred();
-
+            
+            // make sure proxy is attached to options before calling validate
+            // so npm can use it in the domain
+            options = options || {};
+            options.proxy = PreferencesManager.get("proxy");
+            
             extensionManager.validate(path, options)
                 .done(function (result) {
                     d.resolve({
@@ -159,7 +162,8 @@ define(function (require, exports, module) {
                 disabledDirectory: disabledDirectory,
                 systemExtensionDirectory: systemDirectory,
                 apiVersion: brackets.metadata.apiVersion,
-                nameHint: nameHint
+                nameHint: nameHint,
+                proxy: PreferencesManager.get("proxy")
             })
                 .done(function (result) {
                     result.keepFile = false;
@@ -532,7 +536,7 @@ define(function (require, exports, module) {
                         _nodeConnectionDeferred.resolve();
                     },
                     function () { // Failed to connect
-                        console.error("[Extensions] Failed to connect to node", arguments);
+                        console.error(`ExtensionManagerDomain failed to load: ${arguments}`);
                         _nodeConnectionDeferred.reject();
                     }
                 );

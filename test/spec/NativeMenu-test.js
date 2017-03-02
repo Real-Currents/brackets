@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2013 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,11 +21,10 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, describe, it, expect, beforeEach, afterEach, waitsFor, runs, brackets */
+/*global describe, it, expect, beforeEach, afterEach, waitsFor, runs */
 
 define(function (require, exports, module) {
+
     'use strict';
 
     require("utils/Global");
@@ -62,8 +61,11 @@ define(function (require, exports, module) {
             });
 
             waitsFor(function () { return complete; });
+            
+            runs(function () {
+                expect(error).toBe(null);
+            });
 
-            expect(error).toBe(0);
         });
 
         describe("addMenu", function () {
@@ -84,7 +86,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_NOT_FOUND);
+                    expect(error).toBe(brackets.app.ERR_NOT_FOUND);
                 });
 
                 // Add menu
@@ -99,7 +101,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify menu is found
@@ -115,7 +117,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe(TEST_MENU_TITLE);
                 });
 
@@ -131,21 +133,13 @@ define(function (require, exports, module) {
             });
 
             it("should return an error if invalid parameters are passed", function () {
-                var complete = false,
-                    error = 0;
-
-                runs(function () {
-                    brackets.app.addMenu(TEST_MENU_TITLE, TEST_MENU_ID, 42, "", function (err) {
-                        complete = true;
-                        error = err;
-                    });
-                });
-
-                waitsFor(function () { return complete; });
-
-                runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_INVALID_PARAMS);
-                });
+                var error;
+                try {
+                    brackets.app.addMenu(TEST_MENU_TITLE, TEST_MENU_ID, 42, "", function () {});
+                } catch (e) {
+                    error = e;
+                }
+                expect(error.message).toContain("must be a string");
             });
         }); // describe("addMenu")
 
@@ -167,7 +161,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -183,7 +177,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -200,7 +194,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify menu is found
@@ -219,7 +213,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe("");
                     expect(position).toBeGreaterThan(0);
                 });
@@ -235,7 +229,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -254,7 +248,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 runs(function () {
@@ -268,7 +262,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify menu is found
@@ -289,7 +283,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe("");
                 });
 
@@ -309,7 +303,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe("");
                     expect(position).toBe(targetPos);
                 });
@@ -349,7 +343,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 runs(function () {
@@ -363,7 +357,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify menu is found
@@ -384,7 +378,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe("");
                 });
 
@@ -404,7 +398,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe("");
                     expect(position).toBe(targetPos);
                 });
@@ -442,7 +436,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_NOT_FOUND);
+                    expect(error).toBe(brackets.app.ERR_NOT_FOUND);
                 });
 
                 // Verify menu is found
@@ -461,7 +455,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe("");
                     expect(position).toBeGreaterThan(0);
                 });
@@ -496,7 +490,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -512,7 +506,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -529,7 +523,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify item
@@ -545,7 +539,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe(TEST_MENU_ITEM);
                     complete = false;
                     brackets.app.removeMenuItem(TEST_MENU_ITEM_ID, function (err) {
@@ -557,20 +551,13 @@ define(function (require, exports, module) {
             });
 
             it("should return an error if invalid parameters are passed", function () {
-                runs(function () {
-                    error = 0;
-                    complete = false;
-                    brackets.app.addMenuItem(TEST_MENU_ID, TEST_MENU_ITEM, TEST_MENU_ITEM_ID, "", 42, "", "", function (err) {
-                        complete = true;
-                        error = err;
-                    });
-                });
-
-                waitsFor(function () { return complete; });
-
-                runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_INVALID_PARAMS);
-                });
+                var error;
+                try {
+                    brackets.app.addMenuItem(TEST_MENU_ID, TEST_MENU_ITEM, TEST_MENU_ITEM_ID, "", 42, "", "", function () {});
+                } catch (e) {
+                    error = e;
+                }
+                expect(error.message).toContain("must be a string");
             });
         }); // describe("addMenuItem")
 
@@ -593,7 +580,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Add a menu item into the empty menu
@@ -608,7 +595,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
             });
@@ -632,7 +619,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -649,7 +636,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify item is found in the right position
@@ -668,7 +655,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe(TEST_MENU_ID);
                     expect(position).toBe(0);
                 });
@@ -686,7 +673,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe("Brackets Test Command Custom 1");
                 });
 
@@ -712,7 +699,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify item is found in the right position
@@ -731,7 +718,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe(TEST_MENU_ID);
                     expect(position).toBe(1);
                 });
@@ -749,7 +736,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe("Brackets Test Command Custom 2");
                 });
 
@@ -776,7 +763,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify item is found in the right position
@@ -795,7 +782,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe(TEST_MENU_ID);
                     expect(position).toBe(1);
                 });
@@ -813,7 +800,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe("Brackets Test Command Custom 3");
                 });
 
@@ -839,7 +826,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Verify item is found in the right position
@@ -858,7 +845,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe(TEST_MENU_ID);
                     expect(position).toBe(0);
                 });
@@ -876,7 +863,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe("Brackets Test Command Custom 4");
                 });
 
@@ -902,7 +889,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_NOT_FOUND);
+                    expect(error).toBe(brackets.app.ERR_NOT_FOUND);
                 });
 
                 // Verify item is found in the right position
@@ -921,7 +908,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(parentId).toBe(TEST_MENU_ID);
                     expect(position).toBe(1);
                 });
@@ -939,7 +926,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe("Brackets Test Command Custom 5");
                 });
 
@@ -995,7 +982,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(index).toBe(2);
                 });
 
@@ -1025,7 +1012,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(index).toBe(6);
                 });
 
@@ -1055,7 +1042,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(index).toBe(0);
                 });
 
@@ -1085,7 +1072,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(index).toBe(5);
                 });
                 runs(function () {
@@ -1117,7 +1104,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 runs(function () {
@@ -1131,26 +1118,18 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
             it("should return an error if invalid parameters are passed", function () {
-                complete = false;
-                error = 0;
-
-                runs(function () {
-                    brackets.app.removeMenu(42, function (err) {
-                        complete = true;
-                        error = err;
-                    });
-                });
-
-                waitsFor(function () { return complete; });
-
-                runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_INVALID_PARAMS);
-                });
+                var error;
+                try {
+                    brackets.app.removeMenu(42, function () {});
+                } catch (e) {
+                    error = e;
+                }
+                expect(error.message).toContain("must be a string");
             });
 
             it("should return an error if the menu can't be found", function () {
@@ -1167,7 +1146,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_NOT_FOUND);
+                    expect(error).toBe(brackets.app.ERR_NOT_FOUND);
                 });
             });
         });
@@ -1196,7 +1175,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -1218,7 +1197,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -1236,7 +1215,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; }, "calling removeMenuItem");
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Make sure it's gone
@@ -1251,25 +1230,17 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; }, "calling getMenuTitle");
 
                 runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_NOT_FOUND);
+                    expect(error).toBe(brackets.app.ERR_NOT_FOUND);
                 });
             });
             it("should return an error if invalid parameters are passed", function () {
-                var complete = false,
-                    error = 0;
-
-                runs(function () {
-                    brackets.app.removeMenuItem(42, function (err) {
-                        complete = true;
-                        error = err;
-                    });
-                });
-
-                waitsFor(function () { return complete; }, "calling removeMenuItem");
-
-                runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_INVALID_PARAMS);
-                });
+                var error;
+                try {
+                    brackets.app.removeMenuItem(42, function () {});
+                } catch (e) {
+                    error = e;
+                }
+                expect(error.message).toContain("must be a string");
             });
             it("should return an error if the menu item can't be found", function () {
                 var complete = false,
@@ -1285,7 +1256,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; }, "calling removeMenuItem");
 
                 runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_NOT_FOUND);
+                    expect(error).toBe(brackets.app.ERR_NOT_FOUND);
                 });
             });
         });
@@ -1314,7 +1285,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -1337,7 +1308,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
             it("should be able to set enabled state", function () {
@@ -1357,7 +1328,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
 //                    expect(enabled).toBe(true);
                 });
 
@@ -1373,7 +1344,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Make sure it is enabled
@@ -1389,7 +1360,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(enabled).toBe(false);
                 });
             });
@@ -1410,7 +1381,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(checked).toBe(false);
                 });
 
@@ -1426,7 +1397,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Make sure it is enabled
@@ -1442,26 +1413,18 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
 //                    expect(checked).toBe(true);
                 });
             });
             it("should return an error if invalid parameters are passed", function () {
-                var complete = false,
-                    error = 0;
-
-                runs(function () {
-                    brackets.app.setMenuItemState(ITEM_ID, "hello", "world", function (err) {
-                        complete = true;
-                        error = err;
-                    });
-                });
-
-                waitsFor(function () { return complete; });
-
-                runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_INVALID_PARAMS);
-                });
+                var error;
+                try {
+                    brackets.app.setMenuItemState(ITEM_ID, "hello", "world", function () {});
+                } catch (e) {
+                    error = e;
+                }
+                expect(error.message).toContain("must be a boolean");
             });
         });
 
@@ -1487,7 +1450,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
 
@@ -1512,7 +1475,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
             });
             it("should be able to set menu title", function () {
@@ -1533,7 +1496,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe(TEST_MENU_TITLE);
                 });
 
@@ -1549,7 +1512,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Make sure it is set
@@ -1565,7 +1528,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe(NEW_TITLE);
                 });
             });
@@ -1587,7 +1550,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe(TEST_MENU_ITEM);
                 });
 
@@ -1603,7 +1566,7 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                 });
 
                 // Make sure it is set
@@ -1619,26 +1582,18 @@ define(function (require, exports, module) {
                 waitsFor(function () { return complete; });
 
                 runs(function () {
-                    expect(error).toBe(0);
+                    expect(error).toBe(null);
                     expect(title).toBe(NEW_TITLE);
                 });
             });
             it("should return an error if invalid parameters are passed", function () {
-                var complete = false,
-                    error = 0;
-
-                runs(function () {
-                    brackets.app.setMenuTitle(TEST_MENU_ITEM_ID, 42, function (err) {
-                        complete = true;
-                        error = err;
-                    });
-                });
-
-                waitsFor(function () { return complete; });
-
-                runs(function () {
-                    expect(error).toBe(brackets.fs.ERR_INVALID_PARAMS);
-                });
+                var error;
+                try {
+                    brackets.app.setMenuTitle(TEST_MENU_ITEM_ID, 42, function () {});
+                } catch (e) {
+                    error = e;
+                }
+                expect(error.message).toContain("must be a string");
             });
         });
 
@@ -1654,8 +1609,10 @@ define(function (require, exports, module) {
             });
 
             waitsFor(function () { return complete; });
-
-            expect(error).toBe(0);
+            
+            runs(function () {
+                expect(error).toBe(null);
+            });
         });
     }); // describe("Native Menus")
 });

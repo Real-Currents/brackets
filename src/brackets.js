@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,7 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, brackets: true, $, window, navigator, Mustache, jQuery */
+/*global jQuery */
 
 // TODO: (issue #264) break out the definition of brackets into a separate module from the application controller logic
 
@@ -39,7 +37,6 @@ define(function (require, exports, module) {
     "use strict";
 
     // Load dependent non-module scripts
-    require("thirdparty/path-utils/path-utils.min");
     require("widgets/bootstrap-dropdown");
     require("widgets/bootstrap-modal");
     require("widgets/bootstrap-twipsy-mod");
@@ -91,10 +88,11 @@ define(function (require, exports, module) {
     require("editor/CSSInlineEditor");
     require("project/WorkingSetSort");
     require("search/QuickOpen");
+    require("search/QuickOpenHelper");
     require("file/FileUtils");
     require("project/SidebarView");
     require("utils/Resizer");
-    require("LiveDevelopment/main");
+    // require("LiveDevelopment/main");
     require("utils/NodeConnection");
     require("utils/NodeDomain");
     require("utils/ColorUtils");
@@ -102,6 +100,7 @@ define(function (require, exports, module) {
     require("thirdparty/lodash");
     require("language/XMLUtils");
     require("language/JSONUtils");
+    require("electron");
 
     // DEPRECATED: In future we want to remove the global CodeMirror, but for now we
     // expose our required CodeMirror globally so as to avoid breaking extensions in the
@@ -112,6 +111,30 @@ define(function (require, exports, module) {
         get: function () {
             DeprecationWarning.deprecationWarning('Use brackets.getModule("thirdparty/CodeMirror/lib/codemirror") instead of global CodeMirror.', true);
             return CodeMirror;
+        }
+    });
+
+    // DEPRECATED: In future we want to remove the global Mustache, but for now we
+    // expose our required Mustache globally so as to avoid breaking extensions in the
+    // interim.
+    var Mustache = require("thirdparty/mustache/mustache");
+
+    Object.defineProperty(window, "Mustache", {
+        get: function () {
+            DeprecationWarning.deprecationWarning('Use brackets.getModule("thirdparty/mustache/mustache") instead of global Mustache.', true);
+            return Mustache;
+        }
+    });
+
+    // DEPRECATED: In future we want to remove the global PathUtils, but for now we
+    // expose our required PathUtils globally so as to avoid breaking extensions in the
+    // interim.
+    var PathUtils = require("thirdparty/path-utils/path-utils");
+
+    Object.defineProperty(window, "PathUtils", {
+        get: function () {
+            DeprecationWarning.deprecationWarning('Use brackets.getModule("thirdparty/path-utils/path-utils") instead of global PathUtils.', true);
+            return PathUtils;
         }
     });
 
@@ -160,7 +183,7 @@ define(function (require, exports, module) {
             DocumentCommandHandlers : require("document/DocumentCommandHandlers"),
             DocumentManager         : require("document/DocumentManager"),
             DocumentModule          : require("document/Document"),
-            DOMAgent                : require("LiveDevelopment/Agents/DOMAgent"),
+            // DOMAgent                : require("LiveDevelopment/Agents/DOMAgent"),
             DragAndDrop             : require("utils/DragAndDrop"),
             EditorManager           : require("editor/EditorManager"),
             ExtensionLoader         : require("utils/ExtensionLoader"),
@@ -174,14 +197,14 @@ define(function (require, exports, module) {
             FindInFiles             : require("search/FindInFiles"),
             FindInFilesUI           : require("search/FindInFilesUI"),
             HTMLInstrumentation     : require("language/HTMLInstrumentation"),
-            Inspector               : require("LiveDevelopment/Inspector/Inspector"),
+            // Inspector               : require("LiveDevelopment/Inspector/Inspector"),
             InstallExtensionDialog  : require("extensibility/InstallExtensionDialog"),
             JSUtils                 : require("language/JSUtils"),
             KeyBindingManager       : require("command/KeyBindingManager"),
             LanguageManager         : require("language/LanguageManager"),
-            LiveDevelopment         : require("LiveDevelopment/LiveDevelopment"),
-            LiveDevMultiBrowser     : require("LiveDevelopment/LiveDevMultiBrowser"),
-            LiveDevServerManager    : require("LiveDevelopment/LiveDevServerManager"),
+            // LiveDevelopment         : require("LiveDevelopment/LiveDevelopment"),
+            // LiveDevMultiBrowser     : require("LiveDevelopment/LiveDevMultiBrowser"),
+            // LiveDevServerManager    : require("LiveDevelopment/LiveDevServerManager"),
             MainViewFactory         : require("view/MainViewFactory"),
             MainViewManager         : require("view/MainViewManager"),
             Menus                   : require("command/Menus"),
@@ -190,7 +213,7 @@ define(function (require, exports, module) {
             PerfUtils               : require("utils/PerfUtils"),
             PreferencesManager      : require("preferences/PreferencesManager"),
             ProjectManager          : require("project/ProjectManager"),
-            RemoteAgent             : require("LiveDevelopment/Agents/RemoteAgent"),
+            // RemoteAgent             : require("LiveDevelopment/Agents/RemoteAgent"),
             ScrollTrackMarkers      : require("search/ScrollTrackMarkers"),
             UpdateNotification      : require("utils/UpdateNotification"),
             WorkingSetView          : require("project/WorkingSetView"),
@@ -220,7 +243,7 @@ define(function (require, exports, module) {
         // Use quiet scrollbars if we aren't on Lion. If we're on Lion, only
         // use native scroll bars when the mouse is not plugged in or when
         // using the "Always" scroll bar setting.
-        var osxMatch = /Mac OS X 10\D([\d+])\D/.exec(navigator.userAgent);
+        var osxMatch = /Mac OS X 10\D([\d+])\D/.exec(window.navigator.userAgent);
         if (osxMatch && osxMatch[1] && Number(osxMatch[1]) >= 7) {
             // test a scrolling div for scrollbars
             var $testDiv = $("<div style='position:fixed;left:-50px;width:50px;height:50px;overflow:auto;'><div style='width:100px;height:100px;'/></div>").appendTo(window.document.body);
@@ -413,32 +436,6 @@ define(function (require, exports, module) {
                 node = node.parentElement;
             }
         }, true);
-
-        // on Windows, cancel every other scroll event (#10214)
-        // TODO: remove this hack when we upgrade CEF to a build with this bug fixed:
-        // https://bitbucket.org/chromiumembedded/cef/issue/1481
-        var winCancelWheelEvent = true;
-        function windowsScrollFix(e) {
-            winCancelWheelEvent = !winCancelWheelEvent;
-            if (winCancelWheelEvent) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-            }
-        }
-
-        function enableOrDisableWinScrollFix() {
-            window.document.body.removeEventListener("wheel", windowsScrollFix, true);
-            if (PreferencesManager.get("_windowsScrollFix")) {
-                window.document.body.addEventListener("wheel", windowsScrollFix, true);
-            }
-        }
-
-        if (brackets.platform === "win" && !brackets.inBrowser) {
-            PreferencesManager.definePreference("_windowsScrollFix", "boolean", true, {
-                excludeFromHints: true
-            }).on("change", enableOrDisableWinScrollFix);
-            enableOrDisableWinScrollFix();
-        }
 
         // Prevent extensions from using window.open() to insecurely load untrusted web content
         var real_windowOpen = window.open;

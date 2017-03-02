@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2015 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,8 +21,7 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, nomen: true,  regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, appshell */
+/*global appshell */
 
 define(function (require, exports, module) {
     "use strict";
@@ -67,7 +66,7 @@ define(function (require, exports, module) {
         if (errorCode === appshell.app.ERR_CL_TOOLS_CANCELLED) {
             // The user has cancelled the authentication dialog.
             return;
-        } else if (errorCode === appshell.app.NO_ERROR) {
+        } else if (errorCode == null) {
             // flag success message here.
             dialog = Dialogs.showModalDialog(
                 DefaultDialogs.DIALOG_ID_INFO,

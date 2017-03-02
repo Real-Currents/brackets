@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,7 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, regexp: true */
-/*global define, $, brackets, window, WebSocket */
+/*jslint regexp: true */
 
 define(function (require, exports, module) {
     "use strict";
@@ -62,6 +60,11 @@ define(function (require, exports, module) {
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
      */
+
+    /**
+     * Instance of the App and BrowserWindow object provided by Electron
+     */
+    var browserWindow = electron.remote.getCurrentWindow();
 
     /**
      * Container for label shown above editor; must be an inline element
@@ -185,6 +188,14 @@ define(function (require, exports, module) {
             }
         }
 
+        if (brackets.platform === "mac") {
+            if (!currentDoc) {
+                browserWindow.setRepresentedFilename("");
+            } else if (!currentDoc.isDirty) {
+                browserWindow.setDocumentEdited(false);
+            }
+        }
+
         var projectRoot = ProjectManager.getProjectRoot();
         if (projectRoot) {
             var projectName = projectRoot.name;
@@ -193,8 +204,18 @@ define(function (require, exports, module) {
                 windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, _currentTitlePath, projectName, brackets.config.app_title);
                 // Display dirty dot when there are unsaved changes
                 if (currentDoc && currentDoc.isDirty) {
-                    windowTitle = "• " + windowTitle;
+                    if (brackets.platform === "mac") {
+                        browserWindow.setDocumentEdited(true);
+                    } else {
+                        windowTitle = "• " + windowTitle;
+                    }
                 }
+
+                // macOS have a proxy icon for document window in window title
+                if (brackets.platform === "mac") {
+                    browserWindow.setRepresentedFilename(currentDoc.file.fullPath);
+                }
+
             } else {
                 // A document is not open
                 windowTitle = StringUtils.format(WINDOW_TITLE_STRING_NO_DOC, projectName, brackets.config.app_title);
@@ -1347,11 +1368,6 @@ define(function (require, exports, module) {
     }
 
     /**
-     * @private - tracks our closing state if we get called again
-     */
-    var _windowGoingAway = false;
-
-    /**
      * @private
      * Common implementation for close/quit/reload which all mostly
      * the same except for the final step
@@ -1360,29 +1376,33 @@ define(function (require, exports, module) {
      * @param {!function()} failHandler - called when the save fails to cancel closing the window
      */
     function _handleWindowGoingAway(commandData, postCloseHandler, failHandler) {
-        if (_windowGoingAway) {
+        if (appshell.windowGoingAway) {
             //if we get called back while we're closing, then just return
             return (new $.Deferred()).reject().promise();
         }
 
         return CommandManager.execute(Commands.FILE_CLOSE_ALL, { promptOnly: true })
             .done(function () {
-                _windowGoingAway = true;
+                appshell.windowGoingAway = true;
 
-                // Give everyone a chance to save their state - but don't let any problems block
-                // us from quitting
+                // window is going away, hide it from the user
+                browserWindow.hide();
+
+                // give everyone a chance to save their state - but don't let any problems block us from quitting
                 try {
                     ProjectManager.trigger("beforeAppClose");
                 } catch (ex) {
                     console.error(ex);
                 }
 
+                // save state, this will call async writeFile and needs a bit of time
                 PreferencesManager.savePreferences();
 
-                postCloseHandler();
+                // setTimeout to make sure saving state got time to finish
+                setTimeout(postCloseHandler, 500);
             })
             .fail(function () {
-                _windowGoingAway = false;
+                appshell.windowGoingAway = false;
                 if (failHandler) {
                     failHandler();
                 }
@@ -1394,7 +1414,7 @@ define(function (require, exports, module) {
      * Implementation for abortQuit callback to reset quit sequence settings
      */
     function handleAbortQuit() {
-        _windowGoingAway = false;
+        appshell.windowGoingAway = false;
     }
 
     /**
@@ -1406,20 +1426,38 @@ define(function (require, exports, module) {
     }
 
     /**
+     * Emitted when the window is going to be closed.
+     * It's emitted before the beforeunload and unload event of DOM
+     * For some Electron reason, we also need the onbeforeunload handler
+     */
+    if (!window.isSpecRunner) {
+        window.onbeforeunload = function () {
+            // note: in electron, any non-void return value will cause abort
+            if (!appshell.windowGoingAway) {
+                return false;
+            }
+        };
+        browserWindow.on("close", function (event) {
+            if (!appshell.windowGoingAway) {
+                // stop the event for now
+                event.preventDefault();
+                // call _handleWindowGoingAway and then actually close the window
+                _handleWindowGoingAway(event, function () {
+                    browserWindow.close();
+                });
+            }
+            return appshell.windowGoingAway;
+        });
+    }
+
+    /**
      * Confirms any unsaved changes, then closes the window
      * @param {Object} command data
      */
     function handleFileCloseWindow(commandData) {
-        return _handleWindowGoingAway(
-            commandData,
-            function () {
-                window.close();
-            },
-            function () {
-                // if fail, tell the app to abort any pending quit operation.
-                brackets.app.abortQuit();
-            }
-        );
+        return _handleWindowGoingAway(commandData, function () {
+            browserWindow.close();
+        });
     }
 
     /** Show a textfield to rename whatever is currently selected in the sidebar (or current doc if nothing else selected) */
@@ -1437,16 +1475,9 @@ define(function (require, exports, module) {
 
     /** Closes the window, then quits the app */
     function handleFileQuit(commandData) {
-        return _handleWindowGoingAway(
-            commandData,
-            function () {
-                brackets.app.quit();
-            },
-            function () {
-                // if fail, don't exit: user canceled (or asked us to save changes first, but we failed to do so)
-                brackets.app.abortQuit();
-            }
-        );
+        return _handleWindowGoingAway(commandData, function () {
+            browserWindow.close();
+        });
     }
 
 
@@ -1525,35 +1556,31 @@ define(function (require, exports, module) {
     /** Delete file command handler  **/
     function handleFileDelete() {
         var entry = ProjectManager.getSelectedItem();
-        if (entry.isDirectory) {
-            Dialogs.showModalDialog(
-                DefaultDialogs.DIALOG_ID_EXT_DELETED,
-                Strings.CONFIRM_FOLDER_DELETE_TITLE,
-                StringUtils.format(
-                    Strings.CONFIRM_FOLDER_DELETE,
-                    StringUtils.breakableUrl(entry.name)
-                ),
-                [
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                        id        : Dialogs.DIALOG_BTN_CANCEL,
-                        text      : Strings.CANCEL
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                        id        : Dialogs.DIALOG_BTN_OK,
-                        text      : Strings.DELETE
-                    }
-                ]
-            )
-                .done(function (id) {
-                    if (id === Dialogs.DIALOG_BTN_OK) {
-                        ProjectManager.deleteItem(entry);
-                    }
-                });
-        } else {
-            ProjectManager.deleteItem(entry);
-        }
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_EXT_DELETED,
+            Strings.CONFIRM_DELETE_TITLE,
+            StringUtils.format(
+                entry.isFile ? Strings.CONFIRM_FILE_DELETE : Strings.CONFIRM_FOLDER_DELETE,
+                StringUtils.breakableUrl(entry.name)
+            ),
+            [
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                    id        : Dialogs.DIALOG_BTN_CANCEL,
+                    text      : Strings.CANCEL
+                },
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                    id        : Dialogs.DIALOG_BTN_OK,
+                    text      : Strings.DELETE
+                }
+            ]
+        )
+            .done(function (id) {
+                if (id === Dialogs.DIALOG_BTN_OK) {
+                    ProjectManager.deleteItem(entry);
+                }
+            });
     }
 
     /** Show the selected sidebar (tree or workingset) item in Finder/Explorer */
@@ -1575,7 +1602,7 @@ define(function (require, exports, module) {
     function _disableCache() {
         var result = new $.Deferred();
 
-        if (brackets.inBrowser) {
+        if (brackets.inBrowser || brackets.inElectron) {
             result.resolve();
         } else {
             var port = brackets.app.getRemoteDebuggingPort ? brackets.app.getRemoteDebuggingPort() : 9234;
@@ -1617,8 +1644,12 @@ define(function (require, exports, module) {
         _isReloading = true;
 
         return CommandManager.execute(Commands.FILE_CLOSE_ALL, { promptOnly: true }).done(function () {
-            // Give everyone a chance to save their state - but don't let any problems block
-            // us from quitting
+            appshell.windowGoingAway = true;
+
+            // window is going away, hide it from the user
+            browserWindow.hide();
+
+            // Give everyone a chance to save their state - but don't let any problems block us from quitting
             try {
                 ProjectManager.trigger("beforeAppClose");
             } catch (ex) {
@@ -1638,10 +1669,7 @@ define(function (require, exports, module) {
                     href = href.substr(0, fragment);
                 }
 
-                // Defer for a more successful reload - issue #11539
-                setTimeout(function () {
-                    window.location.href = href;
-                }, 1000);
+                setTimeout(() => electron.remote.require("./main").restart(href), 500);
             });
         }).fail(function () {
             _isReloading = false;

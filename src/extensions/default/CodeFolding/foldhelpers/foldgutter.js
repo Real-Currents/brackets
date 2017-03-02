@@ -2,8 +2,7 @@
 // Distributed under an MIT license: http://codemirror.net/LICENSE
 // Based on http://codemirror.net/addon/fold/foldgutter.js
 // Modified by Patrick Oladimeji for Brackets
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, brackets, document, window, $*/
+
 define(function (require, exports, module) {
     "use strict";
     var CodeMirror      = brackets.getModule("thirdparty/CodeMirror/lib/codemirror"),
@@ -28,7 +27,7 @@ define(function (require, exports, module) {
       * @return {HTMLElement} a htmlelement representing the fold marker
       */
     function marker(spec) {
-        var elt = document.createElement("div");
+        var elt = window.document.createElement("div");
         elt.className = spec;
         return elt;
     }
@@ -100,6 +99,7 @@ define(function (require, exports, module) {
                 i = sr.to.line + 1;
             } else {
                 range = cm._lineFolds[i] || (func && func(cm, pos));
+
                 if (!fade || (fade && $gutter.is(":hover"))) {
                     if (cm.isFolded(i)) {
                         // expand fold if invalid
@@ -138,22 +138,6 @@ define(function (require, exports, module) {
         });
         state.from = from;
         state.to = to;
-    }
-
-    /**
-      * Clears the code folding gutter
-      * @param {!CodeMirror} cm the CodeMirror instance for the active  editor
-      */
-    function clearGutter(cm) {
-        var opts = cm.state.foldGutter.options;
-        cm.clearGutter(opts.gutter);
-        var blank = marker("CodeMirror-foldgutter-blank");
-        var vp = cm.getViewport();
-        cm.operation(function () {
-            cm.eachLine(vp.from, vp.to, function (line) {
-                cm.setGutterMarker(line.lineNo(), opts.gutter, blank);
-            });
-        });
     }
 
     /**
@@ -355,14 +339,10 @@ define(function (require, exports, module) {
       * @param {!CodeMirror} cm the CodeMirror instance for the active editor
       * @param {!Object} from  the ch and line position that designates the start of the region
       * @param {!Object} to the ch and line position that designates the end of the region
-      * @param {?Number} gutterLineNumber the gutter line number that was clicked to signal the fold event
       */
-    function onFold(cm, from, to, gutterLineNumber) {
-        var state = cm.state.foldGutter,
-            line = isNaN(gutterLineNumber) ? from.line : gutterLineNumber;
-        if (line >= state.from && line < state.to) {
-            updateFoldInfo(cm, line, line + 1);
-        }
+    function onFold(cm, from, to) {
+        var state = cm.state.foldGutter;
+        updateFoldInfo(cm, from.line, from.line + 1);
     }
 
     /**
@@ -370,15 +350,12 @@ define(function (require, exports, module) {
       * @param {!CodeMirror} cm the CodeMirror instance for the active editor
       * @param {!{line:number, ch:number}} from  the ch and line position that designates the start of the region
       * @param {!{line:number, ch:number}} to the ch and line position that designates the end of the region
-      * @param {?Number} gutterLineNumber the gutter line number that was clicked to signal the fold event
       */
-    function onUnFold(cm, from, to, gutterLineNumber) {
-        var state = cm.state.foldGutter,
-            line = isNaN(gutterLineNumber) ? from.line : gutterLineNumber;
+    function onUnFold(cm, from, to) {
+        var state = cm.state.foldGutter;
         var vp = cm.getViewport();
-        if (line >= state.from && line < state.to) {
-            updateFoldInfo(cm, line, Math.min(vp.to, to.line));
-        }
+        delete cm._lineFolds[from.line];
+        updateFoldInfo(cm, from.line, to.line || vp.to);
     }
 
     /**
@@ -414,7 +391,6 @@ define(function (require, exports, module) {
     }
 
     exports.init = init;
-    exports.clearGutter = clearGutter;
     exports.updateInViewport = updateInViewport;
 
 });

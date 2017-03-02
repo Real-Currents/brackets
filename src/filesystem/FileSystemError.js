@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2013 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,10 +21,6 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define */
-
 /**
  * FileSystemError describes the errors that can occur when using the FileSystem, File,
  * and Directory modules.
@@ -42,10 +38,11 @@ define(function (require, exports, module) {
         UNKNOWN                     : "Unknown",
         INVALID_PARAMS              : "InvalidParams",
         NOT_FOUND                   : "NotFound",
-        NOT_READABLE                : "NotReadable",
+        PERM_DENIED                 : "PermDenied",
+        NOT_READABLE                : "PermDenied", // this is here for compatibility, PERM_DENIED is preffered
+        NOT_WRITABLE                : "PermDenied", // this is here for compatibility, PERM_DENIED is preffered
         UNSUPPORTED_ENCODING        : "UnsupportedEncoding",
         NOT_SUPPORTED               : "NotSupported",
-        NOT_WRITABLE                : "NotWritable",
         OUT_OF_SPACE                : "OutOfSpace",
         TOO_MANY_ENTRIES            : "TooManyEntries",
         ALREADY_EXISTS              : "AlreadyExists",

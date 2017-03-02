@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,9 +21,7 @@
  *
  */
 
-
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, regexp: true */
-/*global define, $, brackets, window */
+/*jslint regexp: true */
 /*unittests: KeyBindingManager */
 
 /**
@@ -156,8 +154,8 @@ define(function (require, exports, module) {
      * Flags used to determine whether right Alt key is pressed. When it is pressed,
      * the following two keydown events are triggered in that specific order.
      *
-     *    1. _ctrlDown - flag used to record { ctrlKey: true, keyIdentifier: "Control", ... } keydown event
-     *    2. _altGrDown - flag used to record { ctrlKey: true, altKey: true, keyIdentifier: "Alt", ... } keydown event
+     *    1. _ctrlDown - flag used to record { ctrlKey: true, key: "Control", ... } keydown event
+     *    2. _altGrDown - flag used to record { ctrlKey: true, altKey: true, key: "Alt", ... } keydown event
      *
      * @type {CtrlDownStates|boolean}
      */
@@ -173,7 +171,7 @@ define(function (require, exports, module) {
 
     /**
      * @private
-     * Used to record the keyIdentifier property of the last keydown event.
+     * Used to record the key property of the last keydown event.
      * @type {string}
      */
     var _lastKeyIdentifier;
@@ -226,12 +224,12 @@ define(function (require, exports, module) {
     /**
      * @private
      * Detects whether AltGr key is pressed. When it is pressed, the first keydown event has
-     * ctrlKey === true with keyIdentifier === "Control". The next keydown event with
-     * altKey === true, ctrlKey === true and keyIdentifier === "Alt" is sent within 30 ms. Then
-     * the next keydown event with altKey === true, ctrlKey === true and keyIdentifier === "Control"
+     * ctrlKey === true with key === "Control". The next keydown event with
+     * altKey === true, ctrlKey === true and key === "Alt" is sent within 30 ms. Then
+     * the next keydown event with altKey === true, ctrlKey === true and key === "Control"
      * is sent. If the user keep holding AltGr key down, then the second and third
      * keydown events are repeatedly sent out alternately. If the user is also holding down Ctrl
-     * key, then either keyIdentifier === "Control" or keyIdentifier === "Alt" is repeatedly sent
+     * key, then either key === "Control" or key === "Alt" is repeatedly sent
      * but not alternately.
      *
      * Once we detect the AltGr key down, then disable KeyBindingManager and set up a keyup
@@ -247,13 +245,13 @@ define(function (require, exports, module) {
         }
 
         if (!_altGrDown) {
-            if (_ctrlDown !== CtrlDownStates.DETECTED_AND_IGNORED && e.ctrlKey && e.keyIdentifier === "Control") {
+            if (_ctrlDown !== CtrlDownStates.DETECTED_AND_IGNORED && e.ctrlKey && e.key === "Control") {
                 _ctrlDown = CtrlDownStates.DETECTED;
-            } else if (e.repeat && e.ctrlKey && e.keyIdentifier === "Control") {
+            } else if (e.repeat && e.ctrlKey && e.key === "Control") {
                 // We get here if the user is holding down left/right Control key. Set it to false
                 // so that we don't misidentify the combination of Ctrl and Alt keys as AltGr key.
                 _ctrlDown = CtrlDownStates.DETECTED_AND_IGNORED;
-            } else if (_ctrlDown === CtrlDownStates.DETECTED && e.altKey && e.ctrlKey && e.keyIdentifier === "Alt" &&
+            } else if (_ctrlDown === CtrlDownStates.DETECTED && e.altKey && e.ctrlKey && e.key === "Alt" &&
                         (e.timeStamp - _lastTimeStamp) < MAX_INTERVAL_FOR_CTRL_ALT_KEYS) {
                 _altGrDown = true;
                 _lastKeyIdentifier = "Alt";
@@ -265,14 +263,14 @@ define(function (require, exports, module) {
                 _ctrlDown = CtrlDownStates.NOT_YET_DETECTED;
             }
             _lastTimeStamp = e.timeStamp;
-        } else if (e.keyIdentifier === "Control" || e.keyIdentifier === "Alt") {
+        } else if (e.key === "Control" || e.key === "Alt") {
             // If the user is NOT holding down AltGr key or is also pressing Ctrl key,
-            // then _lastKeyIdentifier will be the same as keyIdentifier in the current
+            // then _lastKeyIdentifier will be the same as key in the current
             // key event. So we need to quit AltGr mode to re-enable KBM.
-            if (e.altKey && e.ctrlKey && e.keyIdentifier === _lastKeyIdentifier) {
+            if (e.altKey && e.ctrlKey && e.key === _lastKeyIdentifier) {
                 _quitAltGrMode();
             } else {
-                _lastKeyIdentifier = e.keyIdentifier;
+                _lastKeyIdentifier = e.key;
             }
         }
     }
@@ -488,11 +486,11 @@ define(function (require, exports, module) {
             hasShift = (event.shiftKey),
             key = String.fromCharCode(event.keyCode);
 
-        //From the W3C, if we can get the KeyboardEvent.keyIdentifier then look here
+        //From the W3C, if we can get the KeyboardEvent.key then look here
         //As that will let us use keys like then function keys "F5" for commands. The
         //full set of values we can use is here
         //http://www.w3.org/TR/2007/WD-DOM-Level-3-Events-20071221/keyset.html#KeySet-Set
-        var ident = event.keyIdentifier;
+        var ident = event.key;
         if (ident) {
             if (ident.charAt(0) === "U" && ident.charAt(1) === "+") {
                 //This is a unicode code point like "U+002A", get the 002A and use that
